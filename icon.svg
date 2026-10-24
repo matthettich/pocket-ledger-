@@ -1,12 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <path id="d" fill="none" stroke-linecap="square" stroke-linejoin="miter"
-      d="M53.62 -115A70 70 0 1 0 0 0A70 70 0 1 1 -53.62 115M0 -168V168"/>
-  </defs>
+  <defs><g id="coin"><path stroke="none" d="M0 -144.0A96 96 0 0 0 0 48.0Z"/><path stroke="none" d="M0 -48.0A96 96 0 0 1 0 144.0Z"/><rect stroke="none" x="-14" y="-188.0" width="28" height="376.0"/></g></defs>
   <rect width="512" height="512" fill="#FFFFFF"/>
-  <g transform="translate(256 256) scale(0.9) translate(-22 -22)" stroke-width="42">
-    <g transform="translate(44 44)"><use href="#d" stroke="#111111" stroke-width="64"/><use href="#d" stroke="#C9B8F5"/></g>
-    <g transform="translate(22 22)"><use href="#d" stroke="#111111" stroke-width="64"/><use href="#d" stroke="#5FCFC4"/></g>
-    <g><use href="#d" stroke="#111111" stroke-width="64"/><use href="#d" stroke="#F7A6C3"/></g>
+  <g transform="translate(256 256) scale(0.95) translate(-16 -16)">
+    <g opacity="0.4" fill="#B7A3F0" stroke="#B7A3F0" transform="translate(32 32)"><use href="#coin"/></g>
+    <g opacity="0.7" fill="#5FCFC4" stroke="#5FCFC4" transform="translate(16 16)"><use href="#coin"/></g>
+    <g fill="#F59BBE" stroke="#F59BBE"><use href="#coin"/></g>
   </g>
 </svg>
