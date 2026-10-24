@@ -16,7 +16,7 @@ Everything is stored on the device in `localStorage`. Use **Copy backup** / **Re
 | `index.html` | The whole app: markup, styles and script |
 | `manifest.webmanifest` | App name, icons and colors for installing |
 | `sw.js` | Service worker: offline cache and update check. Bump `CACHE` whenever `index.html` changes |
-| `icon.svg`, `icon-*.png` | App icon: the three category shapes (square = needs, circle = wants, diamond = savings) |
+| `icon.svg`, `icon-*.png` | App icon: a pink dollar sign with teal and lavender drop shadows |
 
 ## Hosting
 
