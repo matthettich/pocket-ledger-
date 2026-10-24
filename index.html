@@ -420,7 +420,8 @@ const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform===
 let installEvt=null;
 function installUI(){
   const btn=$('#installBtn'), hint=$('#installHint');
-  if(!isApp){btn.hidden=true;hint.hidden=true;return}
+  if(!isApp){btn.hidden=true;hint.hidden=false;
+    hint.innerHTML='To install Pocket Ledger as an app, open <a href="https://matthettich.github.io/pocket-ledger-/" target="_blank" rel="noopener">matthettich.github.io/pocket-ledger-</a>.';return}
   hint.hidden=false;
   if(standalone()){btn.hidden=true;hint.textContent='Pocket Ledger is installed as an app on this device.';return}
   btn.hidden=false;
