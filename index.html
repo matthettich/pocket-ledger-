@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket Ledger</title>
+<meta name="description" content="A 50/30/20 budget: monthly take-home pay, needs / wants / savings envelopes, and quick purchase entry.">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="only light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pocket Ledger">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%}
+/* Layout: Daily meds system — white page, square 3px-framed boxes, pastel bodies from the weekday's hue.
+   Phone: one column (income, add, envelopes, purchases). Unfolded/wide: two columns like Daily meds. */
+:root{
+  --ink:#111111; --muted:#4A4A4A; --rule:#111111; --hair:rgba(17,17,17,.16);
+  --white:#FFFFFF; --danger:#B3261E;
+  --font:Futura,"Futura PT","Jost","Century Gothic",system-ui,sans-serif;
+  color-scheme:light;
+}
+/* One color per day, same as Daily meds: Sun peach, Mon lavender, Tue pink, Wed turquoise, Thu mustard, Fri seafoam, Sat blue */
+body{--h:262;--s:70%;--tx:#2F4A0A}
+body[data-day="0"]{--h:22; --s:85%;--tx:#1B4A6B}
+body[data-day="1"]{--h:262;--s:70%;--tx:#2F4A0A}
+body[data-day="2"]{--h:338;--s:80%;--tx:#0A4A44}
+body[data-day="3"]{--h:176;--s:55%;--tx:#7A1F3D}
+body[data-day="4"]{--h:44; --s:75%;--tx:#3A2F86}
+body[data-day="5"]{--h:152;--s:50%;--tx:#7A1E5E}
+body[data-day="6"]{--h:208;--s:75%;--tx:#8A3412}
+
+/* Each box is its own version of the day color (a hue shift) */
+.box,.sh{--H:calc(var(--h) + var(--dh,0))}
+.c-needs{--dh:0} .c-wants{--dh:44} .c-save{--dh:110}
+.c-income{--dh:-22} .c-add{--dh:-55} .c-list{--dh:-22} .c-set{--dh:78}
+
+*,*::before,*::after{box-sizing:border-box;border-radius:0}
+body{margin:0;color:var(--ink);background:var(--white);font-family:var(--font);
+  font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1100px;margin:0 auto;padding-block:12px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.brand{font-weight:500;letter-spacing:.02em;color:var(--tx);white-space:nowrap}
+header.top{min-height:36px}
+.inst{min-height:36px;padding:4px 14px;font-weight:500;color:var(--tx);background:hsl(var(--h) var(--s) 90%)}
+/* New-version banner, same as Daily meds */
+.updb{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:50;
+  font:inherit;font-size:15px;font-weight:500;white-space:nowrap;padding:12px 18px;cursor:pointer;
+  background:hsl(var(--h) var(--s) 84%);color:var(--tx);border:3px solid var(--rule)}
+.toast span{white-space:normal}
+.toast{max-width:calc(100vw - 32px)}
+.cols{display:grid;gap:12px 24px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:720px){.cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+
+/* Month header: black text, pastel stripe under each part */
+.day{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin:4px 0 10px}
+.daybtn{display:block;border:0;background:transparent;padding:0;margin:0;text-align:left;cursor:default}
+.daybtn.away{cursor:pointer}
+.day h1{font-size:26px;line-height:1.1;margin:0;font-weight:500;letter-spacing:-.01em}
+.day h1 .mo,.day h1 .yr{background-repeat:no-repeat;background-size:100% .36em;background-position:0 88%;padding:0 .04em}
+.day h1 .mo{background-image:linear-gradient(hsl(var(--h) var(--s) 81%),hsl(var(--h) var(--s) 81%))}
+.day h1 .yr{background-image:linear-gradient(hsl(calc(var(--h) + 44) var(--s) 70%),hsl(calc(var(--h) + 44) var(--s) 70%))}
+.day h1 small{display:block;font-size:13px;font-weight:400;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
+.daybtn .back{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid var(--rule);background:var(--white);color:var(--ink);font-size:12px}
+.daynav{display:flex;border:1px solid var(--rule);flex:none}
+.icon-btn{width:40px;height:40px;border:0;background:var(--white);display:grid;place-items:center;color:var(--ink);padding:0}
+.icon-btn+.icon-btn{border-left:1px solid var(--rule)}
+.icon-btn svg{width:16px;height:16px}
+
+.progress{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:13px;color:var(--muted)}
+.progress .count{color:var(--ink);white-space:nowrap}
+.bar{flex:1;height:6px;border:1px solid var(--rule);background:var(--white)}
+.bar i{display:block;height:100%;background:var(--ink);width:0;transition:width .2s}
+.progress.over .bar i{background:var(--danger)}
+
+.sect{display:flex;align-items:center;gap:10px;margin:14px 0 0;font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sect::after{content:"";flex:1;height:1px;background:var(--rule)}
+.col > .sect:first-child{margin-top:0}
+
+/* Boxes: black frame; inverted = white body + colored title bar, regular = colored body + white title bar */
+.box{border:3px solid var(--rule);--l:88%}
+.inv{background:var(--white)} .inv > .lid{background:hsl(var(--H) var(--s) var(--l))}
+.reg{background:hsl(var(--H) var(--s) var(--l))} .reg > .lid{background:var(--white)}
+.lid{display:flex;align-items:center;gap:8px;min-height:38px;padding:0 0 0 10px;color:var(--tx);
+  border-bottom:3px solid var(--rule);font-weight:500;font-size:17px;-webkit-user-select:none;user-select:none}
+.lid h2{margin:0;font:inherit}
+.lid .st{margin-left:auto;font-size:13px;padding-right:10px;white-space:nowrap}
+.bd{padding:10px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+/* Geometric outlined pastel shapes: needs = square, wants = circle, savings = diamond */
+.sh{flex:none;width:12px;height:12px;border:2px solid var(--ink);background:hsl(var(--H) var(--s) 78%)}
+.sh.c-wants{border-radius:50%}
+.sh.c-save{width:11px;height:11px;transform:rotate(45deg);margin:0 1px}
+
+/* Income */
+.inc{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 16px}
+.inc label{display:grid;gap:2px;font-size:13px;color:var(--muted)}
+.money{display:flex;align-items:center;border:1px solid var(--rule);background:var(--white)}
+.money span{padding:0 0 0 10px;font-size:22px;font-weight:500;color:var(--ink)}
+.money input{width:9ch;border:0;background:transparent;padding:6px 10px 6px 4px;font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--ink);min-width:0}
+.money input:focus{outline:0}
+.money:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+.left{text-align:right}
+.left small{display:block;font-size:13px;color:var(--muted)}
+.left b{font-size:22px;font-weight:500}
+.left.neg b{color:var(--danger)}
+
+/* Add a purchase */
+.addf{display:grid;gap:10px}
+.addf .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:8px}
+.addf input[type=text],.addf input[type=date]{width:100%;min-width:0;padding:10px;border:1px solid var(--rule);background:var(--white);font-size:15px;color:var(--ink)}
+.addf .money input{width:100%;font-size:18px;padding:8px 8px 8px 2px}
+.addf .money span{font-size:18px}
+.slotpick{display:flex;border:1px solid var(--rule);background:var(--white)}
+.slotpick button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;padding:8px 6px;min-height:44px;font-size:15px;font-weight:500}
+.slotpick button+button{border-left:1px solid var(--rule)}
+.slotpick button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+.slotpick button[aria-pressed="true"] .sh{border-color:var(--white)}
+.addf .go{display:flex;gap:8px}
+.addf .go input{flex:1}
+.primary{border:1px solid var(--ink);background:var(--ink);color:var(--white);padding:8px 22px;min-height:42px;font-weight:500}
+.ghost{border:1px solid var(--rule);background:var(--white);padding:8px 14px;min-height:40px}
+
+/* Envelopes */
+.env .bd{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:end}
+.big{font-size:28px;font-weight:500;line-height:1}
+.big small{font-size:13px;font-weight:400;color:var(--muted);margin-left:6px}
+.env .rest{font-size:13px;text-align:right;white-space:nowrap}
+.track{grid-column:1/-1;height:10px;border:1px solid var(--rule);background:var(--white)}
+.track i{display:block;height:100%;background:hsl(var(--H) var(--s) 68%);width:0;transition:width .25s}
+.env .hint{grid-column:1/-1}
+.env.over .big,.env.over .rest{color:var(--danger)}
+.env.over .track i{background:var(--danger)}
+.env.met .rest{font-weight:500}
+
+/* Purchases */
+.prow{display:flex;align-items:stretch;border-top:1px solid var(--hair)}
+.lid + .prow{border-top:0}
+.row{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 10px;min-height:52px}
+.row .tx{flex:1;min-width:0;overflow-wrap:anywhere}
+.row .nm{font-weight:500;display:block}
+.row .ds{font-size:13px;color:var(--muted)}
+.row .side{margin-left:auto;white-space:nowrap}
+.parch{flex:none;width:48px;border:0;border-left:1px solid var(--hair);background:transparent;color:var(--ink);font-size:20px;line-height:1}
+.parch:hover{color:var(--danger)}
+.empty-row{padding:14px 10px;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:12px}
+
+/* Settings */
+.seg{display:flex;border:1px solid var(--rule);background:var(--white);margin:6px 0 10px}
+.seg button{flex:1 1 0;min-width:0;border:0;background:transparent;padding:0 4px;min-height:40px;font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+.legend{font-size:13px;color:var(--muted)}
+.backup-btns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px solid var(--rule);background:var(--white);padding:8px 10px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+.rules{display:grid;gap:6px;margin:10px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+.rules li{display:flex;gap:8px;align-items:baseline}
+.rules .sh{transform:translateY(1px)}
+.rules .sh.c-save{transform:translateY(1px) rotate(45deg)}
+
+/* Undo toast, Daily meds banner style */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;
+  display:flex;align-items:center;gap:14px;white-space:nowrap;padding:10px 10px 10px 16px;font-weight:500;
+  background:hsl(var(--h) var(--s) 84%);color:var(--tx);border:3px solid var(--rule)}
+.toast button{border:1px solid var(--rule);background:var(--white);color:var(--ink);padding:4px 12px;min-height:34px;font-weight:500}
+
+@media (prefers-reduced-motion:reduce){.bar i,.track i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">Pocket Ledger</span>
+    <button class="ghost inst" id="installBtn" type="button" hidden>Install app</button>
+  </header>
+
+  <div class="day">
+    <button class="daybtn" id="monthBtn" type="button"><h1 id="monthTitle"></h1></button>
+    <div class="daynav">
+      <button class="icon-btn" id="prevM" type="button" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="icon-btn" id="nextM" type="button" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+  </div>
+  <div class="progress num" id="progress"></div>
+
+  <div class="cols">
+    <div class="col">
+      <section class="box inv c-income" style="--l:90%">
+        <div class="lid"><h2>Take-home pay</h2><span class="st">per month, after tax</span></div>
+        <div class="bd inc">
+          <label for="income">Monthly income
+            <span class="money"><span>$</span><input id="income" type="number" inputmode="decimal" min="0" step="1" placeholder="0"></span>
+          </label>
+          <div class="left num" id="leftBox"><small>Not yet spent or saved</small><b id="leftNum">$0.00</b></div>
+        </div>
+      </section>
+
+      <section class="box reg c-add">
+        <div class="lid"><h2>Add a purchase</h2><span class="st" id="addMsg"></span></div>
+        <form class="bd addf" id="addForm" autocomplete="off">
+          <div class="two">
+            <span class="money"><span>$</span><input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required aria-label="Amount"></span>
+            <input id="desc" type="text" placeholder="What was it?" aria-label="What was it?">
+          </div>
+          <div class="slotpick" role="group" aria-label="Category">
+            <button type="button" data-c="needs" aria-pressed="true"><span class="sh c-needs"></span>Need</button>
+            <button type="button" data-c="wants" aria-pressed="false"><span class="sh c-wants"></span>Want</button>
+            <button type="button" data-c="save" aria-pressed="false"><span class="sh c-save"></span>Save</button>
+          </div>
+          <div class="go">
+            <input id="date" type="date" aria-label="Date">
+            <button class="primary" type="submit">Add</button>
+          </div>
+          <p class="hint">The category picks itself from what you type (rent, groceries, 401k…). Tap one to change it.</p>
+        </form>
+      </section>
+
+      <div class="sect">Budget</div>
+      <div id="env" class="col"></div>
+    </div>
+
+    <div class="col">
+      <div class="sect"><span id="listHead">Purchases</span></div>
+      <div class="list" id="list"></div>
+
+      <section class="box inv c-set">
+        <div class="lid"><h2>Settings &amp; backup</h2></div>
+        <div class="bd">
+          <div class="legend">Budget split: needs / wants / savings &amp; debt</div>
+          <div class="seg" id="ruleSeg" role="group" aria-label="Budget split">
+            <button type="button" data-r="50/30/20">50/30/20</button>
+            <button type="button" data-r="60/20/20">60/20/20</button>
+            <button type="button" data-r="70/20/10">70/20/10</button>
+            <button type="button" data-r="40/30/30">40/30/30</button>
+          </div>
+          <ul class="rules">
+            <li><span class="sh c-needs"></span><span><b>Needs:</b> rent or mortgage, utilities, groceries, transport, insurance, medical, minimum debt payments.</span></li>
+            <li><span class="sh c-wants"></span><span><b>Wants:</b> eating out, shows, gear, subscriptions, travel, anything optional.</span></li>
+            <li><span class="sh c-save"></span><span><b>Savings &amp; debt:</b> emergency fund, retirement, investing, paying debt down faster.</span></li>
+          </ul>
+          <div class="backup-btns">
+            <button class="ghost" id="exportBtn" type="button">Copy backup</button>
+            <button class="ghost" id="importBtn" type="button">Restore pasted backup</button>
+          </div>
+          <textarea id="io" placeholder="Copy backup puts your data here. To restore, paste a backup here and tap Restore."></textarea>
+          <p class="hint" style="margin-top:8px">Your entries are saved on this device only. Copy a backup before switching phones or browsers.</p>
+          <p class="hint" id="installHint" style="margin-top:8px" hidden></p>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const KEY='pocket-ledger-v1';
+const CATS={needs:{name:'Need',env:'Needs'},wants:{name:'Want',env:'Wants'},save:{name:'Savings',env:'Savings & debt'}};
+const ORDER=['needs','wants','save'];
+const WORDS={
+  save:['saving','savings','invest','401k','ira','roth','emergency','extra payment','payoff','brokerage','hysa','vanguard','fidelity'],
+  needs:['rent','mortgage','electric','power','gas bill','water','internet','phone','grocer','insurance','pharmacy','rx','medic','doctor','dentist','vet','transit','bus','car payment','loan','minimum','fuel','gas ','daycare','childcare','utilit','hoa','tuition','dog food'],
+};
+let state=load()||{income:0,rule:'50/30/20',tx:[]};
+const now=new Date();
+let view=ym(now);
+document.body.dataset.day=String(now.getDay());
+
+const $=s=>document.querySelector(s);
+const fmt=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0=n=>'$'+Math.round(n).toLocaleString();
+function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function todayISO(){const d=new Date();return ym(d)+'-'+String(d.getDate()).padStart(2,'0')}
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function pct(){return state.rule.split('/').map(Number)}
+function guess(desc){
+  const d=(desc||'').toLowerCase()+' ';
+  for(const w of WORDS.save) if(d.includes(w)) return 'save';
+  for(const w of WORDS.needs) if(d.includes(w)) return 'needs';
+  return 'wants';
+}
+function monthsAway(){const [y,m]=view.split('-').map(Number);return (y-now.getFullYear())*12+(m-1-now.getMonth())}
+
+function render(){
+  // month header
+  const away=monthsAway();
+  const d=new Date(view+'-01T12:00');
+  const rel=away===0?'This month':away===-1?'Last month':away===1?'Next month':away<0?`${-away} months ago`:`In ${away} months`;
+  $('#monthTitle').innerHTML=`<small>${rel}${away?'<span class="back">↩ Back to this month</span>':''}</small><span class="mo">${d.toLocaleDateString(undefined,{month:'long'})}</span> <span class="yr">${d.getFullYear()}</span>`;
+  $('#monthBtn').classList.toggle('away',!!away);
+  $('#income').value=state.income||'';
+  document.querySelectorAll('#ruleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===state.rule)));
+
+  const tx=state.tx.filter(t=>t.date.startsWith(view)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const spent={needs:0,wants:0,save:0}; tx.forEach(t=>spent[t.cat]+=t.amt);
+  const total=spent.needs+spent.wants+spent.save;
+  const inc=state.income||0, left=inc-total;
+
+  $('#leftNum').textContent=fmt(left);
+  $('#leftBox').classList.toggle('neg',left<0);
+
+  const pr=$('#progress');
+  if(inc>0){
+    pr.innerHTML=`<span class="count">${fmt(total)}</span> of ${fmt0(inc)} used<span class="bar"><i style="width:${Math.min(100,total/inc*100)}%"></i></span>`;
+    pr.classList.toggle('over',total>inc);
+  } else pr.innerHTML='<span>Enter your take-home pay below to set this month’s budget.</span><span class="bar"></span>';
+
+  // envelopes: alternate inverted / regular like Daily meds sections
+  const p=pct();
+  $('#env').innerHTML=ORDER.map((k,i)=>{
+    const budget=inc*p[i]/100, s=spent[k];
+    const isSave=k==='save';
+    const over=!isSave&&budget>0&&s>budget, met=isSave&&budget>0&&s>=budget;
+    const w=budget>0?Math.min(100,s/budget*100):0;
+    let rest;
+    if(!inc) rest='—';
+    else if(isSave) rest=met?(s>budget?`Goal met, ${fmt(s-budget)} extra`:'Goal met'):`${fmt(budget-s)} to go`;
+    else rest=over?`${fmt(s-budget)} over`:`${fmt(budget-s)} left`;
+    const hint=!inc?'<p class="hint">Enter your take-home pay to size this envelope.</p>':'';
+    return `<section class="box ${i%2?'reg':'inv'} c-${k} env${over?' over':''}${met?' met':''}">
+      <div class="lid"><span class="sh c-${k}"></span><h2>${CATS[k].env}</h2><span class="st num">${p[i]}% · ${fmt0(budget)}</span></div>
+      <div class="bd">
+        <div class="big num">${fmt0(s)}<small>${isSave?'put away':'spent'}</small></div>
+        <div class="rest num">${rest}</div>
+        <div class="track"><i style="width:${w}%"></i></div>${hint}
+      </div></section>`;
+  }).join('');
+
+  // purchases grouped by day
+  const mname=d.toLocaleDateString(undefined,{month:'long'});
+  $('#listHead').textContent=`Purchases · ${tx.length}`;
+  if(!tx.length){
+    $('#list').innerHTML=`<section class="box reg c-list" style="--l:92%"><div class="lid"><h2>${mname}</h2></div><div class="empty-row">Nothing logged for ${mname} yet. Use Add a purchase to log your first one.</div></section>`;
+    return;
+  }
+  const byDay={}; tx.forEach(t=>(byDay[t.date]=byDay[t.date]||[]).push(t));
+  $('#list').innerHTML=Object.keys(byDay).map((day,i)=>{
+    const sum=byDay[day].reduce((a,t)=>a+t.amt,0);
+    const dn=new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    return `<section class="box ${i%2?'inv':'reg'} c-list" style="--l:${i%2?88:92}%">
+      <div class="lid"><h2>${dn}</h2><span class="st num">${fmt(sum)}</span></div>`+
+      byDay[day].map(t=>`<div class="prow">
+        <div class="row"><span class="sh c-${t.cat}"></span>
+          <span class="tx"><span class="nm">${esc(t.desc)||'Untitled'}</span><span class="ds">${CATS[t.cat].name}</span></span>
+          <span class="side num">${fmt(t.amt)}</span></div>
+        <button class="parch" type="button" data-id="${t.id}" aria-label="Delete ${esc(t.desc)||'purchase'}">×</button>
+      </div>`).join('')+'</section>';
+  }).join('');
+}
+
+// category picker
+let cat='needs', userPicked=false;
+function setCat(c){cat=c;document.querySelectorAll('.slotpick button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.c===c)))}
+document.querySelectorAll('.slotpick button').forEach(b=>b.addEventListener('click',()=>{userPicked=true;setCat(b.dataset.c)}));
+$('#desc').addEventListener('input',e=>{if(!userPicked) setCat(guess(e.target.value))});
+
+let msgT;
+$('#addForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const amt=parseFloat($('#amount').value); if(!(amt>0)) return;
+  const date=$('#date').value||todayISO();
+  state.tx.push({id:Date.now(),amt:Math.round(amt*100)/100,desc:$('#desc').value.trim(),cat,date});
+  save(); view=date.slice(0,7);
+  $('#amount').value=''; $('#desc').value=''; userPicked=false; setCat('needs');
+  render();
+  $('#addMsg').textContent='Added'; clearTimeout(msgT); msgT=setTimeout(()=>$('#addMsg').textContent='',1600);
+  $('#amount').focus();
+});
+$('#income').addEventListener('input',e=>{state.income=parseFloat(e.target.value)||0;save();render()});
+document.querySelectorAll('#ruleSeg button').forEach(b=>b.addEventListener('click',()=>{state.rule=b.dataset.r;save();render()}));
+function shift(n){const [y,m]=view.split('-').map(Number);view=ym(new Date(y,m-1+n,1));render()}
+$('#prevM').addEventListener('click',()=>shift(-1));
+$('#nextM').addEventListener('click',()=>shift(1));
+$('#monthBtn').addEventListener('click',()=>{if(monthsAway()){view=ym(now);render()}});
+
+// toast: a message with an optional button
+let toastT;
+function toast(text,label,action,ms){
+  clearTimeout(toastT); document.querySelector('.toast')?.remove();
+  const el=document.createElement('div'); el.className='toast';
+  el.innerHTML=`<span></span><button type="button"></button>`;
+  el.querySelector('span').textContent=text;
+  const b=el.querySelector('button'); b.textContent=label||'OK';
+  b.onclick=()=>{el.remove(); if(action) action()};
+  document.body.appendChild(el); toastT=setTimeout(()=>el.remove(),ms||6000);
+}
+
+// delete with undo
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('.parch'); if(!b) return;
+  const i=state.tx.findIndex(t=>t.id===Number(b.dataset.id)); if(i<0) return;
+  const [t]=state.tx.splice(i,1); save(); render();
+  toast(`Deleted ${fmt(t.amt)}`,'Undo',()=>{state.tx.push(t);save();render()});
+});
+
+/* ---------- install as an app ----------
+   Only the GitHub Pages copy has a manifest and service worker; inside a Claude artifact this whole block stays quiet.
+   Chrome/Edge/Samsung Internet fire beforeinstallprompt and the button opens the real install dialog.
+   Safari never does, so the button explains Share → Add to Home Screen instead. */
+const isApp=!!document.querySelector('link[rel="manifest"]');
+const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let installEvt=null;
+function installUI(){
+  const btn=$('#installBtn'), hint=$('#installHint');
+  if(!isApp){btn.hidden=true;hint.hidden=true;return}
+  hint.hidden=false;
+  if(standalone()){btn.hidden=true;hint.textContent='Pocket Ledger is installed as an app on this device.';return}
+  btn.hidden=false;
+  hint.textContent=installEvt?'Tap Install app at the top to add Pocket Ledger to your home screen and app list.'
+    :isIOS?'To install on iPhone or iPad: tap Share, then Add to Home Screen.'
+    :'To install: open this page in Chrome, tap ⋮, then Install app.';
+}
+if(isApp){
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;installUI()});
+  window.addEventListener('appinstalled',()=>{installEvt=null;installUI();toast('Pocket Ledger is installed. Find it on your home screen.','OK')});
+  $('#installBtn').addEventListener('click',async()=>{
+    if(installEvt){const e=installEvt;installEvt=null;e.prompt();try{await e.userChoice}catch(err){}installUI();return}
+    toast(isIOS?'Tap Share, then Add to Home Screen.':'Open the browser menu (⋮) and choose Install app.','OK',null,9000);
+  });
+  if('serviceWorker' in navigator && location.protocol==='https:'){
+    const hadSW=!!navigator.serviceWorker.controller;
+    window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(!hadSW||document.getElementById('updB')) return;
+      const b=document.createElement('button'); b.id='updB'; b.className='updb'; b.type='button';
+      b.textContent='New version ready · tap to update'; b.onclick=()=>location.reload(); document.body.append(b);
+    });
+    // The installed app has no pull-to-refresh, so look for a new version whenever it comes back to the front
+    document.addEventListener('visibilitychange',async()=>{
+      if(document.hidden) return;
+      try{const r=await navigator.serviceWorker.getRegistration(); if(r) await r.update()}catch(e){}
+    });
+  }
+}
+installUI();
+
+// backup
+$('#exportBtn').addEventListener('click',()=>{
+  const json=JSON.stringify(state); $('#io').value=json;
+  const done=()=>{$('#exportBtn').textContent='Copied';setTimeout(()=>$('#exportBtn').textContent='Copy backup',1500)};
+  try{navigator.clipboard.writeText(json).then(done).catch(()=>$('#io').select())}catch(e){$('#io').select()}
+});
+$('#importBtn').addEventListener('click',()=>{
+  try{const s=JSON.parse($('#io').value); if(!Array.isArray(s.tx)) throw 0; state=s; save(); render(); $('#io').value='Restored.'}
+  catch(e){$('#io').value='That isn’t a Pocket Ledger backup. Paste the whole backup text and try again.'}
+});
+
+$('#date').value=todayISO();
+render();
+})();
+</script>
+</body>
+</html>
