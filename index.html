@@ -180,6 +180,52 @@ textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px 
   background:hsl(var(--h) var(--s) 84%);color:var(--tx);border:3px solid var(--rule)}
 .toast button{border:1px solid var(--rule);background:var(--white);color:var(--ink);padding:4px 12px;min-height:34px;font-weight:500}
 
+/* Box colors for the newer boxes */
+.c-extra{--dh:-110} .c-saved{--dh:140}
+
+/* Add button in a box's title bar, same as Daily meds Settings */
+.lid .act{align-self:stretch;margin-left:auto;border:0;border-left:1px solid var(--rule);background:transparent;color:var(--tx);font-size:13px;padding:0 14px;font-weight:500}
+.lid .st + .act{margin-left:0}
+
+/* Pick-from-list, like the Daily meds pickers */
+.pick select{appearance:none;-webkit-appearance:none;width:100%;min-height:44px;border:1px solid var(--rule);border-radius:0;
+  background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/14px;
+  padding:8px 32px 8px 10px;font:inherit;font-size:15px;color:var(--ink)}
+.pick select:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Repeat: Once / Daily / Weekly / Monthly */
+.addf .seg{margin:0}
+.seg button .rp{margin-right:4px}
+.rp{width:12px;height:12px;vertical-align:-1px;flex:none}
+.row .ds .rp{margin:0 2px 0 4px}
+
+/* Rows that open something when tapped */
+button.row{width:100%;border:0;background:transparent;text-align:left;color:inherit;font:inherit}
+#savedList .row+.row{border-top:1px solid var(--hair)}
+#extraList .prow:first-child{border-top:1px solid var(--rule)}
+#savedList .empty-row{border-top:0}
+
+/* Pop-ups, same as Daily meds */
+dialog{border:3px solid var(--rule);padding:0;width:min(440px,calc(100vw - 24px));background:var(--white);color:var(--ink);max-height:calc(100% - 24px)}
+dialog::backdrop{background:rgba(255,255,255,.75)}
+dialog h3{margin:0;font-size:17px;font-weight:500;color:var(--tx);border-bottom:3px solid var(--rule);padding:10px 14px}
+dialog .body{padding:14px}
+label.f{display:block;margin-bottom:12px;font-size:13px;color:var(--muted)}
+label.f > input{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid var(--rule);background:var(--white);font-size:15px;color:var(--ink)}
+label.f .money{margin-top:4px}
+label.f .money input{width:100%;font-size:18px;padding:8px 8px 8px 2px}
+label.f .money span{font-size:18px}
+.flabel{font-size:13px;color:var(--muted);margin:0 0 4px}
+dialog .slotpick{margin-bottom:12px}
+.dline{margin:0 0 12px;font-size:14px}
+.dbtns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.chip{display:inline-flex;align-items:center;border:1px solid var(--rule);background:var(--white);padding:0 0 0 10px;font-size:14px;min-height:34px}
+.chip button{align-self:stretch;margin-left:8px;border:0;border-left:1px solid var(--rule);background:transparent;padding:0 10px;font-size:13px}
+.err{color:var(--danger);font-size:13px;min-height:1.2em;margin:0 0 8px}
+.actions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.danger{border:0;background:transparent;color:var(--danger);padding:8px 0;min-height:40px;margin-right:auto}
+
 @media (prefers-reduced-motion:reduce){.bar i,.track i{transition:none}}
 </style>
 </head>
@@ -214,21 +260,45 @@ textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px 
       <section class="box reg c-add">
         <div class="lid"><h2>Add a purchase</h2><span class="st" id="addMsg"></span></div>
         <form class="bd addf" id="addForm" autocomplete="off">
+          <div class="pick"><select id="pick" aria-label="Pick a saved cost"></select></div>
           <div class="two">
             <span class="money"><span>$</span><input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required aria-label="Amount"></span>
             <input id="desc" type="text" placeholder="What was it?" aria-label="What was it?">
           </div>
-          <div class="slotpick" role="group" aria-label="Category">
+          <div class="slotpick" id="catPick" role="group" aria-label="Category">
             <button type="button" data-c="needs" aria-pressed="true"><span class="sh c-needs"></span>Need</button>
             <button type="button" data-c="wants" aria-pressed="false"><span class="sh c-wants"></span>Want</button>
             <button type="button" data-c="save" aria-pressed="false"><span class="sh c-save"></span>Save</button>
           </div>
+          <div class="seg" id="repPick" role="group" aria-label="Repeat">
+            <button type="button" data-e="" aria-pressed="true">Once</button>
+            <button type="button" data-e="day" aria-pressed="false">Daily</button>
+            <button type="button" data-e="week" aria-pressed="false">Weekly</button>
+            <button type="button" data-e="month" aria-pressed="false">Monthly</button>
+          </div>
           <div class="go">
             <input id="date" type="date" aria-label="Date">
+            <button class="primary" type="submit" id="addBtn">Add</button>
+          </div>
+          <p class="hint">Words like rent, groceries or 401k pick their own category. Anything else stays on the last one you tapped. A repeat starts on the date above; tap × on one to skip just that one.</p>
+        </form>
+      </section>
+
+      <section class="box inv c-extra">
+        <div class="lid"><h2>Extra income</h2><span class="st num" id="extraSt"></span></div>
+        <form class="bd addf" id="extraForm" autocomplete="off">
+          <div class="two">
+            <span class="money"><span>$</span><input id="xamt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required aria-label="Extra income amount"></span>
+            <input id="xdesc" type="text" placeholder="From where?" aria-label="From where?" list="xsrc">
+          </div>
+          <div class="go">
+            <input id="xdate" type="date" aria-label="Date received">
             <button class="primary" type="submit">Add</button>
           </div>
-          <p class="hint">Words like rent, groceries or 401k pick their own category. Anything else stays on the last one you tapped.</p>
+          <p class="hint" id="xHint">One-off money on top of your pay: a gig, a sale, a refund, a gift. It’s added to that month’s budget.</p>
         </form>
+        <datalist id="xsrc"></datalist>
+        <div id="extraList"></div>
       </section>
 
       <div class="sect">Budget</div>
@@ -238,6 +308,12 @@ textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px 
     <div class="col">
       <div class="sect"><span id="listHead">Purchases</span></div>
       <div class="list" id="list"></div>
+
+      <div class="sect">Lists</div>
+      <section class="box reg c-saved">
+        <div class="lid"><h2>Saved costs</h2><span class="st num" id="savedSt"></span><button class="act" id="addSaved" type="button">Add</button></div>
+        <div id="savedList"></div>
+      </section>
 
       <section class="box inv c-set">
         <div class="lid"><h2>Settings &amp; backup</h2></div>
@@ -267,16 +343,76 @@ textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px 
   </div>
 </div>
 
+<!-- Saved cost editor, like the Daily meds item pop-up -->
+<dialog id="sdlg" aria-labelledby="sdTitle">
+  <form method="dialog" id="sForm" novalidate autocomplete="off">
+    <h3 id="sdTitle">New saved cost</h3>
+    <div class="body">
+      <label class="f">Name<input name="name" placeholder="e.g. Rent, Doctor, Spotify" required></label>
+      <label class="f">Usual amount (leave empty if it changes)<span class="money"><span>$</span><input name="amt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></span></label>
+      <p class="flabel">Category</p>
+      <div class="slotpick" id="sCat" role="group" aria-label="Category"></div>
+      <p class="err" id="sErr" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="danger" id="sDel">Delete</button>
+        <button type="button" class="ghost" id="sCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- A repeating cost: skip one, stop it, bring skipped ones back, edit or delete it -->
+<dialog id="rdlg" aria-labelledby="rdTitle">
+  <form method="dialog" id="rForm" novalidate autocomplete="off">
+    <h3 id="rdTitle">Repeating cost</h3>
+    <div class="body">
+      <p class="dline" id="rLine"></p>
+      <div class="dbtns">
+        <button type="button" class="ghost" id="rSkip">Skip this one</button>
+        <button type="button" class="ghost" id="rStop">Stop after this one</button>
+        <button type="button" class="ghost" id="rKeep">Keep repeating</button>
+      </div>
+      <div id="rSkipped"></div>
+      <label class="f">What<input name="desc" placeholder="What is it?"></label>
+      <label class="f">Amount<span class="money"><span>$</span><input name="amt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00"></span></label>
+      <p class="flabel">Category</p>
+      <div class="slotpick" id="rCat" role="group" aria-label="Category"></div>
+      <p class="hint">Changes here apply to every one, past and future.</p>
+      <p class="err" id="rErr" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="danger" id="rDel">Delete all</button>
+        <button type="button" class="ghost" id="rCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (function(){
 const KEY='pocket-ledger-v1';
 const CATS={needs:{name:'Need',env:'Needs'},wants:{name:'Want',env:'Wants'},save:{name:'Savings',env:'Savings & debt'}};
 const ORDER=['needs','wants','save'];
+const EVERY={day:{name:'Daily',adv:'every day'},week:{name:'Weekly',adv:'every week'},month:{name:'Monthly',adv:'every month'}};
 const WORDS={
   save:['saving','savings','invest','401k','ira','roth','emergency','extra payment','payoff','brokerage','hysa','vanguard','fidelity'],
   needs:['rent','mortgage','electric','power','gas bill','water','internet','phone','grocer','insurance','pharmacy','rx','medic','doctor','dentist','vet','transit','bus','car payment','loan','minimum','fuel','gas ','daycare','childcare','utilit','hoa','tuition','dog food'],
 };
-let state=load()||{income:0,rule:'50/30/20',tx:[]};
+const RPT='<svg class="rp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
+
+/* Saved data:
+   tx    one-off costs {id, amt, desc, cat, date}
+   reps  repeating costs {id, amt, desc, cat, start, every: day|week|month, skip: [dates], end?: last date}
+   items the saved-costs list that Add a purchase picks from {id, name, amt (0 = varies), cat}
+   extra one-off income {id, amt, desc, date}
+   Older saves only have income, rule and tx; the rest start empty. */
+function norm(s){
+  s=s&&typeof s==='object'?s:{};
+  const arr=a=>Array.isArray(a)?a:[];
+  return {...s,income:+s.income||0,rule:s.rule||'50/30/20',tx:arr(s.tx),reps:arr(s.reps),items:arr(s.items),extra:arr(s.extra)};
+}
+let state=norm(load());
 let today=todayISO();
 let view=today.slice(0,7);
 document.body.dataset.day=String(new Date().getDay());
@@ -284,12 +420,17 @@ document.body.dataset.day=String(new Date().getDay());
 const $=s=>document.querySelector(s);
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt0=n=>'$'+Math.round(n).toLocaleString();
+const r2=n=>Math.round(n*100)/100;
+const short=s=>new Date(s+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const dayName=s=>new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
 function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function todayISO(){const d=new Date();return ym(d)+'-'+String(d.getDate()).padStart(2,'0')}
 function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function pct(){return state.rule.split('/').map(Number)}
+let lastId=0;
+function nid(){lastId=Math.max(Date.now(),lastId+1);return lastId}
 function guess(desc){
   const d=(desc||'').toLowerCase()+' ';
   for(const w of WORDS.save) if(d.includes(w)) return 'save';
@@ -297,13 +438,43 @@ function guess(desc){
   return null;
 }
 function monthsAway(){const [y,m]=view.split('-').map(Number),[ty,tm]=today.split('-').map(Number);return (y-ty)*12+(m-tm)}
-// The date field follows the month on screen: today in this month, the same day-of-month (clamped) in any other
+// The date fields follow the month on screen: today in this month, the same day-of-month (clamped) in any other
+function daysIn(v){const [y,m]=v.split('-').map(Number);return new Date(y,m,0).getDate()}
 function dateFor(v){
   if(v===today.slice(0,7)) return today;
-  const [y,m]=v.split('-').map(Number), last=new Date(y,m,0).getDate();
-  return v+'-'+String(Math.min(Number(today.slice(8)),last)).padStart(2,'0');
+  return v+'-'+String(Math.min(Number(today.slice(8)),daysIn(v))).padStart(2,'0');
 }
-function goTo(v){view=v;$('#date').value=dateFor(v);render()}
+const DATES=['#date','#xdate'];
+function goTo(v){view=v;DATES.forEach(id=>$(id).value=dateFor(v));render()}
+// After adding something dated in another month, show that month; the other date field follows, this one keeps its date
+function follow(v,keep){if(v===view) return;view=v;DATES.forEach(id=>{if(id!==keep) $(id).value=dateFor(v)})}
+
+/* ---------- repeats ----------
+   A repeat lands on its start date and then every day, every 7 days, or the same day each month
+   (the 31st becomes the last day in shorter months). Skipped dates and anything after `end` are left out. */
+const DAY=864e5;
+function dnum(s){const [y,m,d]=s.split('-').map(Number);return Math.round(Date.UTC(y,m-1,d)/DAY)}
+function dstr(n){const d=new Date(n*DAY);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
+function occ(r,v){
+  const n=daysIn(v), first=v+'-01', last=v+'-'+String(n).padStart(2,'0'), out=[];
+  if(r.start>last||(r.end&&r.end<first)) return out;
+  const skip=new Set(r.skip||[]), ok=s=>s>=r.start&&(!r.end||s<=r.end)&&!skip.has(s);
+  if(r.every==='month'){
+    const s=v+'-'+String(Math.min(Number(r.start.slice(8)),n)).padStart(2,'0');
+    if(ok(s)) out.push(s);
+  }else{
+    const step=r.every==='week'?7:1, a=dnum(first), b=dnum(last), s0=dnum(r.start);
+    for(let k=a<=s0?s0:s0+Math.ceil((a-s0)/step)*step;k<=b;k+=step){const s=dstr(k);if(ok(s)) out.push(s)}
+  }
+  return out;
+}
+function repOf(id){return state.reps.find(r=>r.id===id)}
+// Everything that costs money in month v: one-offs plus each repeat's dates, newest first
+function costsIn(v){
+  const L=state.tx.filter(t=>t.date.startsWith(v)).map(t=>({...t,seq:t.id}));
+  for(const r of state.reps) for(const date of occ(r,v)) L.push({rep:r,seq:r.id,amt:r.amt,desc:r.desc,cat:r.cat,date});
+  return L.sort((a,b)=>b.date.localeCompare(a.date)||b.seq-a.seq);
+}
 
 function render(){
   // month header
@@ -312,13 +483,15 @@ function render(){
   const rel=away===0?'This month':away===-1?'Last month':away===1?'Next month':away<0?`${-away} months ago`:`In ${away} months`;
   $('#monthTitle').innerHTML=`<small>${rel}${away?'<span class="back">↩ Back to this month</span>':''}</small><span class="mo">${d.toLocaleDateString(undefined,{month:'long'})}</span> <span class="yr">${d.getFullYear()}</span>`;
   $('#monthBtn').classList.toggle('away',!!away);
-  $('#income').value=state.income||'';
+  if(document.activeElement!==$('#income')) $('#income').value=state.income||'';
   document.querySelectorAll('#ruleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===state.rule)));
 
-  const tx=state.tx.filter(t=>t.date.startsWith(view)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const tx=costsIn(view);
   const spent={needs:0,wants:0,save:0}; tx.forEach(t=>spent[t.cat]+=t.amt);
   const total=spent.needs+spent.wants+spent.save;
-  const inc=state.income||0, left=inc-total;
+  const xs=state.extra.filter(x=>x.date.startsWith(view)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const xsum=xs.reduce((a,x)=>a+x.amt,0);
+  const inc=(state.income||0)+xsum, left=inc-total;
 
   $('#leftNum').textContent=fmt(left);
   $('#leftBox').classList.toggle('neg',left<0);
@@ -350,7 +523,23 @@ function render(){
       </div></section>`;
   }).join('');
 
-  // purchases grouped by day
+  // extra income for this month
+  $('#extraSt').textContent=xs.length?'+'+fmt(xsum):'';
+  $('#xHint').hidden=xs.length>0;
+  $('#extraList').innerHTML=xs.map(x=>`<div class="prow">
+      <div class="row"><span class="tx"><span class="nm">${esc(x.desc)||'Extra income'}</span><span class="ds">${dayName(x.date)}</span></span>
+        <span class="side num">+${fmt(x.amt)}</span></div>
+      <button class="parch" type="button" data-xid="${x.id}" aria-label="Delete ${esc(x.desc)||'extra income'}">×</button>
+    </div>`).join('');
+  const srcs=[...new Set([...state.extra].sort((a,b)=>b.date.localeCompare(a.date)).map(x=>x.desc).filter(Boolean))];
+  $('#xsrc').innerHTML=srcs.map(s=>`<option value="${esc(s)}"></option>`).join('');
+
+  renderSaved();
+  renderList(tx,d);
+}
+
+// purchases grouped by day
+function renderList(tx,d){
   const mname=d.toLocaleDateString(undefined,{month:'long'});
   $('#listHead').textContent=`Purchases · ${tx.length}`;
   if(!tx.length){
@@ -358,37 +547,98 @@ function render(){
     return;
   }
   const byDay={}; tx.forEach(t=>(byDay[t.date]=byDay[t.date]||[]).push(t));
+  const row=t=>{
+    const nm=esc(t.desc)||'Untitled';
+    if(!t.rep) return `<div class="prow">
+        <div class="row"><span class="sh c-${t.cat}"></span>
+          <span class="tx"><span class="nm">${nm}</span><span class="ds">${CATS[t.cat].name}</span></span>
+          <span class="side num">${fmt(t.amt)}</span></div>
+        <button class="parch" type="button" data-id="${t.id}" aria-label="Delete ${nm}">×</button>
+      </div>`;
+    const E=EVERY[t.rep.every];
+    return `<div class="prow">
+        <button class="row" type="button" data-rep="${t.rep.id}" data-date="${t.date}" aria-label="${nm}, repeats ${E.adv}. Tap to skip, stop or change it"><span class="sh c-${t.cat}"></span>
+          <span class="tx"><span class="nm">${nm}</span><span class="ds">${CATS[t.cat].name} ·${RPT}${E.name}</span></span>
+          <span class="side num">${fmt(t.amt)}</span></button>
+        <button class="parch" type="button" data-skip="${t.rep.id}" data-date="${t.date}" aria-label="Skip ${nm} on ${short(t.date)} only">×</button>
+      </div>`;
+  };
   $('#list').innerHTML=Object.keys(byDay).map((day,i)=>{
     const sum=byDay[day].reduce((a,t)=>a+t.amt,0);
-    const dn=new Date(day+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
     return `<section class="box ${i%2?'inv':'reg'} c-list" style="--l:${i%2?88:92}%">
-      <div class="lid"><h2>${dn}</h2><span class="st num">${fmt(sum)}</span></div>`+
-      byDay[day].map(t=>`<div class="prow">
-        <div class="row"><span class="sh c-${t.cat}"></span>
-          <span class="tx"><span class="nm">${esc(t.desc)||'Untitled'}</span><span class="ds">${CATS[t.cat].name}</span></span>
-          <span class="side num">${fmt(t.amt)}</span></div>
-        <button class="parch" type="button" data-id="${t.id}" aria-label="Delete ${esc(t.desc)||'purchase'}">×</button>
-      </div>`).join('')+'</section>';
+      <div class="lid"><h2>${dayName(day)}</h2><span class="st num">${fmt(sum)}</span></div>`+byDay[day].map(row).join('')+'</section>';
   }).join('');
 }
 
-// category picker: a keyword in the description picks the category; anything else keeps the last one you tapped
+/* ---------- saved costs: the list Add a purchase picks from, like the Daily meds pickers ---------- */
+const byName=(a,b)=>a.name.localeCompare(b.name);
+let pickSig='';
+function renderSaved(){
+  const L=[...state.items].sort(byName);
+  $('#savedSt').textContent=L.length?L.length+' saved':'';
+  $('#savedList').innerHTML=L.length?L.map(it=>`<button class="row" type="button" data-edit="${it.id}" aria-label="Edit ${esc(it.name)}">
+      <span class="sh c-${it.cat}"></span>
+      <span class="tx"><span class="nm">${esc(it.name)}</span><span class="ds">${CATS[it.cat].name}</span></span>
+      <span class="side num">${it.amt?fmt(it.amt):'varies'}</span></button>`).join('')
+    :'<div class="empty-row">Save costs you log often, like rent, the doctor or Spotify, then pick them from Add a purchase. Tap Add.</div>';
+  // Rebuild the picker only when the list changed, so it never resets while open
+  const sig=JSON.stringify(L);
+  if(sig===pickSig) return; pickSig=sig;
+  $('#pick').innerHTML=`<option value="">${L.length?'Pick a saved cost…':'Pick a saved cost… (none yet)'}</option>`
+    +L.map(it=>`<option value="${it.id}">${esc(it.name)}${it.amt?' · '+fmt(it.amt):''} · ${CATS[it.cat].name}</option>`).join('')
+    +'<option value="__new">+ New saved cost…</option>';
+}
+
+// category pickers: the Add form's, and the ones in the pop-ups
+const CATBTNS=ORDER.map(k=>`<button type="button" data-c="${k}" aria-pressed="false"><span class="sh c-${k}"></span>${k==='save'?'Save':CATS[k].name}</button>`).join('');
+function pickIn(sel,c){const g=$(sel);g.dataset.v=c;g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.c===c)))}
+['#sCat','#rCat'].forEach(sel=>{const g=$(sel);g.innerHTML=CATBTNS;g.addEventListener('click',e=>{const b=e.target.closest('button');if(b) pickIn(sel,b.dataset.c)})});
+
+// Add form category: a keyword in the description picks it; anything else keeps the last one you tapped
 let base='needs', cat='needs', userPicked=false;
-function setCat(c){cat=c;document.querySelectorAll('.slotpick button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.c===c)))}
-document.querySelectorAll('.slotpick button').forEach(b=>b.addEventListener('click',()=>{userPicked=true;base=b.dataset.c;setCat(base)}));
+function setCat(c){cat=c;pickIn('#catPick',c)}
+$('#catPick').addEventListener('click',e=>{const b=e.target.closest('button');if(!b) return;userPicked=true;base=b.dataset.c;setCat(base)});
 $('#desc').addEventListener('input',e=>{if(!userPicked) setCat(guess(e.target.value)||base)});
 
+// repeat: Once / Daily / Weekly / Monthly; goes back to Once after each add
+let every='';
+function setEvery(v){every=v;document.querySelectorAll('#repPick button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.e===v)));$('#addBtn').textContent=v?'Add '+EVERY[v].name.toLowerCase():'Add'}
+$('#repPick').addEventListener('click',e=>{const b=e.target.closest('button');if(b) setEvery(b.dataset.e)});
+
+// picking a saved cost fills in the form; tap Add to log it (change the amount, date or repeat first if needed)
+function usePick(it){
+  $('#desc').value=it.name; if(it.amt) $('#amount').value=it.amt;
+  userPicked=true; setCat(it.cat);
+  (it.amt?$('#addBtn'):$('#amount')).focus();
+}
+$('#pick').addEventListener('change',e=>{
+  const v=e.target.value; e.target.value='';
+  if(v==='__new'){openSaved(null,{name:$('#desc').value.trim(),amt:parseFloat($('#amount').value)||'',cat},true);return}
+  const it=state.items.find(x=>String(x.id)===v); if(it) usePick(it);
+});
+
 let msgT;
+function flash(t){$('#addMsg').textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>$('#addMsg').textContent='',2200)}
 $('#addForm').addEventListener('submit',e=>{
   e.preventDefault();
   const amt=parseFloat($('#amount').value); if(!(amt>0)) return;
-  const date=$('#date').value||dateFor(view);
-  state.tx.push({id:Date.now(),amt:Math.round(amt*100)/100,desc:$('#desc').value.trim(),cat,date});
-  save(); view=date.slice(0,7);
-  $('#amount').value=''; $('#desc').value=''; userPicked=false; setCat(base);
+  const date=$('#date').value||dateFor(view), desc=$('#desc').value.trim();
+  if(every) state.reps.push({id:nid(),amt:r2(amt),desc,cat,start:date,every,skip:[]});
+  else state.tx.push({id:nid(),amt:r2(amt),desc,cat,date});
+  save(); follow(date.slice(0,7),'#date');
+  flash(every?'Added · repeats '+EVERY[every].adv:'Added');
+  $('#amount').value=''; $('#desc').value=''; userPicked=false; setCat(base); setEvery('');
   render();
-  $('#addMsg').textContent='Added'; clearTimeout(msgT); msgT=setTimeout(()=>$('#addMsg').textContent='',1600);
   $('#amount').focus();
+});
+$('#extraForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const amt=parseFloat($('#xamt').value); if(!(amt>0)) return;
+  const date=$('#xdate').value||dateFor(view);
+  state.extra.push({id:nid(),amt:r2(amt),desc:$('#xdesc').value.trim(),date});
+  save(); follow(date.slice(0,7),'#xdate');
+  $('#xamt').value=''; $('#xdesc').value='';
+  render();
 });
 $('#income').addEventListener('input',e=>{state.income=parseFloat(e.target.value)||0;save();render()});
 document.querySelectorAll('#ruleSeg button').forEach(b=>b.addEventListener('click',()=>{state.rule=b.dataset.r;save();render()}));
@@ -400,10 +650,10 @@ $('#monthBtn').addEventListener('click',()=>{if(monthsAway()) goTo(today.slice(0
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) return;
   const t=todayISO(); if(t===today) return;
-  const oldM=today.slice(0,7), wasToday=$('#date').value===today;
+  const oldM=today.slice(0,7), still=DATES.filter(id=>$(id).value===today);
   today=t; document.body.dataset.day=String(new Date().getDay());
   if(view===oldM&&t.slice(0,7)!==oldM) goTo(t.slice(0,7));
-  else{if(wasToday) $('#date').value=t; render()}
+  else{still.forEach(id=>$(id).value=t); render()}
 });
 
 // toast: a message with an optional button
@@ -418,12 +668,104 @@ function toast(text,label,action,ms){
   document.body.appendChild(el); toastT=setTimeout(()=>el.remove(),ms||6000);
 }
 
-// delete with undo
+// purchases: × deletes a one-off, or skips just that day of a repeat; tapping a repeat opens its options
+function skipOne(r,date){
+  (r.skip||(r.skip=[])).push(date); save(); render();
+  toast(`Skipped ${r.desc||'repeat'} on ${short(date)}`,'Undo',()=>{r.skip=r.skip.filter(s=>s!==date);save();render()});
+}
 $('#list').addEventListener('click',e=>{
-  const b=e.target.closest('.parch'); if(!b) return;
+  const sk=e.target.closest('[data-skip]');
+  if(sk){const r=repOf(Number(sk.dataset.skip)); if(r) skipOne(r,sk.dataset.date); return}
+  const rb=e.target.closest('[data-rep]');
+  if(rb){openRep(Number(rb.dataset.rep),rb.dataset.date); return}
+  const b=e.target.closest('[data-id]'); if(!b) return;
   const i=state.tx.findIndex(t=>t.id===Number(b.dataset.id)); if(i<0) return;
   const [t]=state.tx.splice(i,1); save(); render();
   toast(`Deleted ${fmt(t.amt)}`,'Undo',()=>{state.tx.push(t);save();render()});
+});
+$('#extraList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-xid]'); if(!b) return;
+  const i=state.extra.findIndex(x=>x.id===Number(b.dataset.xid)); if(i<0) return;
+  const [x]=state.extra.splice(i,1); save(); render();
+  toast(`Deleted +${fmt(x.amt)} income`,'Undo',()=>{state.extra.push(x);save();render()});
+});
+
+/* ---------- repeat pop-up ---------- */
+let rctx=null;
+const rdlg=$('#rdlg'), rForm=$('#rForm');
+function fillRep(){
+  const {r,date}=rctx;
+  $('#rdTitle').textContent=(r.desc||'Repeating cost')+' · '+short(date);
+  $('#rLine').innerHTML=`${RPT} ${EVERY[r.every].name}, from ${esc(dayName(r.start))}${r.end?` to ${esc(dayName(r.end))}`:''}`;
+  $('#rSkip').textContent=`Skip ${short(date)} only`;
+  $('#rStop').textContent=`Stop after ${short(date)}`;
+  $('#rStop').hidden=r.end===date;
+  $('#rKeep').hidden=!r.end;
+  const sk=[...(r.skip||[])].sort();
+  $('#rSkipped').innerHTML=sk.length?`<p class="flabel">Skipped · tap Undo to bring one back</p><div class="chips">${sk.map(s=>`<span class="chip">${short(s)}<button type="button" data-unskip="${s}" aria-label="Bring back ${short(s)}">Undo</button></span>`).join('')}</div>`:'';
+}
+function openRep(id,date){
+  const r=repOf(id); if(!r) return;
+  rctx={r,date};
+  rForm.desc.value=r.desc; rForm.amt.value=r.amt; pickIn('#rCat',r.cat); $('#rErr').textContent='';
+  fillRep(); rdlg.showModal();
+}
+$('#rCancel').addEventListener('click',()=>rdlg.close());
+$('#rSkip').addEventListener('click',()=>{rdlg.close();skipOne(rctx.r,rctx.date)});
+$('#rStop').addEventListener('click',()=>{
+  const {r,date}=rctx, prev=r.end; r.end=date; save(); rdlg.close(); render();
+  toast(`${r.desc||'Repeat'} stops after ${short(date)}`,'Undo',()=>{if(prev) r.end=prev; else delete r.end; save(); render()});
+});
+$('#rKeep').addEventListener('click',()=>{delete rctx.r.end; save(); render(); fillRep()});
+$('#rSkipped').addEventListener('click',e=>{
+  const b=e.target.closest('[data-unskip]'); if(!b) return;
+  rctx.r.skip=rctx.r.skip.filter(s=>s!==b.dataset.unskip); save(); render(); fillRep();
+});
+$('#rDel').addEventListener('click',()=>{
+  const r=rctx.r, i=state.reps.indexOf(r); rdlg.close(); if(i<0) return;
+  state.reps.splice(i,1); save(); render();
+  toast(`Deleted every ${r.desc||'repeat'}`,'Undo',()=>{state.reps.push(r);save();render()});
+});
+rForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const amt=parseFloat(rForm.amt.value);
+  if(!(amt>0)){$('#rErr').textContent='Enter an amount above $0.';rForm.amt.focus();return}
+  const r=rctx.r; r.desc=rForm.desc.value.trim(); r.amt=r2(amt); r.cat=$('#rCat').dataset.v||r.cat;
+  save(); rdlg.close(); render();
+});
+
+/* ---------- saved cost pop-up ---------- */
+let sEdit=null, sFromPick=false;
+const sdlg=$('#sdlg'), sForm=$('#sForm');
+function openSaved(it,pre,fromPick){
+  sEdit=it||null; sFromPick=!!fromPick; pre=it||pre||{};
+  $('#sdTitle').textContent=it?'Edit saved cost':'New saved cost';
+  sForm.name.value=pre.name||''; sForm.amt.value=pre.amt||''; pickIn('#sCat',pre.cat||base);
+  $('#sDel').hidden=!it; $('#sErr').textContent='';
+  sdlg.showModal();
+}
+$('#addSaved').addEventListener('click',()=>openSaved(null));
+$('#savedList').addEventListener('click',e=>{
+  const b=e.target.closest('[data-edit]'); if(!b) return;
+  const it=state.items.find(x=>x.id===Number(b.dataset.edit)); if(it) openSaved(it);
+});
+$('#sCancel').addEventListener('click',()=>sdlg.close());
+$('#sDel').addEventListener('click',()=>{
+  const it=sEdit, i=state.items.indexOf(it); sdlg.close(); if(i<0) return;
+  state.items.splice(i,1); save(); render();
+  toast(`Removed ${it.name} from saved costs`,'Undo',()=>{state.items.push(it);save();render()});
+});
+sForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=sForm.name.value.trim(), amt=parseFloat(sForm.amt.value)||0;
+  if(!name){$('#sErr').textContent='Give it a name.';sForm.name.focus();return}
+  if(state.items.some(x=>x!==sEdit&&x.name.toLowerCase()===name.toLowerCase())){$('#sErr').textContent=`${name} is already saved.`;return}
+  const c=$('#sCat').dataset.v||'needs';
+  let it=sEdit;
+  if(it) Object.assign(it,{name,amt:r2(amt),cat:c});
+  else{it={id:nid(),name,amt:r2(amt),cat:c};state.items.push(it)}
+  save(); sdlg.close(); render();
+  if(sFromPick) usePick(it);
 });
 
 /* ---------- install as an app ----------
@@ -476,11 +818,11 @@ $('#exportBtn').addEventListener('click',()=>{
   try{navigator.clipboard.writeText(json).then(done).catch(()=>$('#io').select())}catch(e){$('#io').select()}
 });
 $('#importBtn').addEventListener('click',()=>{
-  try{const s=JSON.parse($('#io').value); if(!Array.isArray(s.tx)) throw 0; state=s; save(); render(); $('#io').value='Restored.'}
+  try{const s=JSON.parse($('#io').value); if(!s||!Array.isArray(s.tx)) throw 0; state=norm(s); pickSig=''; save(); render(); $('#io').value='Restored.'}
   catch(e){$('#io').value='That isn’t a Pocket Ledger backup. Paste the whole backup text and try again.'}
 });
 
-$('#date').value=today;
+DATES.forEach(id=>$(id).value=today);
 render();
 })();
 </script>
