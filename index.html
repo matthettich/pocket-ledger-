@@ -257,6 +257,23 @@ dialog .slotpick{margin-bottom:12px}
         </div>
       </section>
 
+      <section class="box inv c-extra">
+        <div class="lid"><h2>Extra income</h2><span class="st num" id="extraSt"></span></div>
+        <form class="bd addf" id="extraForm" autocomplete="off">
+          <div class="two">
+            <span class="money"><span>$</span><input id="xamt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required aria-label="Extra income amount"></span>
+            <input id="xdesc" type="text" placeholder="From where?" aria-label="From where?" list="xsrc">
+          </div>
+          <div class="go">
+            <input id="xdate" type="date" aria-label="Date received">
+            <button class="primary" type="submit">Add</button>
+          </div>
+          <p class="hint" id="xHint">One-off money on top of your pay: a gig, a sale, a refund, a gift. It’s added to that month’s budget.</p>
+        </form>
+        <datalist id="xsrc"></datalist>
+        <div id="extraList"></div>
+      </section>
+
       <section class="box reg c-add">
         <div class="lid"><h2>Add a purchase</h2><span class="st" id="addMsg"></span></div>
         <form class="bd addf" id="addForm" autocomplete="off">
@@ -282,23 +299,6 @@ dialog .slotpick{margin-bottom:12px}
           </div>
           <p class="hint">Words like rent, groceries or 401k pick their own category. Anything else stays on the last one you tapped. A repeat starts on the date above; tap × on one to skip just that one.</p>
         </form>
-      </section>
-
-      <section class="box inv c-extra">
-        <div class="lid"><h2>Extra income</h2><span class="st num" id="extraSt"></span></div>
-        <form class="bd addf" id="extraForm" autocomplete="off">
-          <div class="two">
-            <span class="money"><span>$</span><input id="xamt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required aria-label="Extra income amount"></span>
-            <input id="xdesc" type="text" placeholder="From where?" aria-label="From where?" list="xsrc">
-          </div>
-          <div class="go">
-            <input id="xdate" type="date" aria-label="Date received">
-            <button class="primary" type="submit">Add</button>
-          </div>
-          <p class="hint" id="xHint">One-off money on top of your pay: a gig, a sale, a refund, a gift. It’s added to that month’s budget.</p>
-        </form>
-        <datalist id="xsrc"></datalist>
-        <div id="extraList"></div>
       </section>
 
       <div class="sect">Budget</div>
@@ -645,6 +645,32 @@ document.querySelectorAll('#ruleSeg button').forEach(b=>b.addEventListener('clic
 function shift(n){const [y,m]=view.split('-').map(Number);goTo(ym(new Date(y,m-1+n,1)))}
 $('#prevM').addEventListener('click',()=>shift(-1));
 $('#nextM').addEventListener('click',()=>shift(1));
+/* Swipe, same as Daily meds: right goes back a month, left goes forward (future months too, for planning), like turning
+   pages. Starts near the screen edges are left alone so the phone's back gesture still works. */
+function goMonth(n){
+  shift(n);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  ['#monthTitle','#progress','.cols'].forEach(s=>{const el=$(s);
+    if(el&&el.animate) el.animate([{transform:`translateX(${n>0?36:-36}px)`,opacity:.35},{transform:'translateX(0)',opacity:1}],{duration:220,easing:'ease-out'})});
+}
+{
+  let sx=0, sy=0, st=0, on=false;
+  const skip='input,select,textarea,dialog';
+  document.addEventListener('touchstart',e=>{
+    on=false; if(e.touches.length!==1) return;
+    const t=e.touches[0], w=window.innerWidth;
+    if(e.target.closest(skip)||document.querySelector('dialog[open]')) return;
+    if(t.clientX<24||t.clientX>w-24) return;
+    sx=t.clientX; sy=t.clientY; st=Date.now(); on=true;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!on) return; on=false;
+    const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Date.now()-st>800||Math.abs(dx)<60||Math.abs(dx)<2*Math.abs(dy)) return;
+    goMonth(dx<0?1:-1);
+  },{passive:true});
+  document.addEventListener('touchcancel',()=>{on=false},{passive:true});
+}
 $('#monthBtn').addEventListener('click',()=>{if(monthsAway()) goTo(today.slice(0,7))});
 // The installed app can sit in the background for days: catch up when the date has rolled over
 document.addEventListener('visibilitychange',()=>{
