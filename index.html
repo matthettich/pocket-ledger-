@@ -227,7 +227,7 @@ textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:1px 
             <input id="date" type="date" aria-label="Date">
             <button class="primary" type="submit">Add</button>
           </div>
-          <p class="hint">The category picks itself from what you type (rent, groceries, 401k…). Tap one to change it.</p>
+          <p class="hint">Words like rent, groceries or 401k pick their own category. Anything else stays on the last one you tapped.</p>
         </form>
       </section>
 
@@ -277,9 +277,9 @@ const WORDS={
   needs:['rent','mortgage','electric','power','gas bill','water','internet','phone','grocer','insurance','pharmacy','rx','medic','doctor','dentist','vet','transit','bus','car payment','loan','minimum','fuel','gas ','daycare','childcare','utilit','hoa','tuition','dog food'],
 };
 let state=load()||{income:0,rule:'50/30/20',tx:[]};
-const now=new Date();
-let view=ym(now);
-document.body.dataset.day=String(now.getDay());
+let today=todayISO();
+let view=today.slice(0,7);
+document.body.dataset.day=String(new Date().getDay());
 
 const $=s=>document.querySelector(s);
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -294,9 +294,16 @@ function guess(desc){
   const d=(desc||'').toLowerCase()+' ';
   for(const w of WORDS.save) if(d.includes(w)) return 'save';
   for(const w of WORDS.needs) if(d.includes(w)) return 'needs';
-  return 'wants';
+  return null;
 }
-function monthsAway(){const [y,m]=view.split('-').map(Number);return (y-now.getFullYear())*12+(m-1-now.getMonth())}
+function monthsAway(){const [y,m]=view.split('-').map(Number),[ty,tm]=today.split('-').map(Number);return (y-ty)*12+(m-tm)}
+// The date field follows the month on screen: today in this month, the same day-of-month (clamped) in any other
+function dateFor(v){
+  if(v===today.slice(0,7)) return today;
+  const [y,m]=v.split('-').map(Number), last=new Date(y,m,0).getDate();
+  return v+'-'+String(Math.min(Number(today.slice(8)),last)).padStart(2,'0');
+}
+function goTo(v){view=v;$('#date').value=dateFor(v);render()}
 
 function render(){
   // month header
@@ -365,30 +372,39 @@ function render(){
   }).join('');
 }
 
-// category picker
-let cat='needs', userPicked=false;
+// category picker: a keyword in the description picks the category; anything else keeps the last one you tapped
+let base='needs', cat='needs', userPicked=false;
 function setCat(c){cat=c;document.querySelectorAll('.slotpick button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.c===c)))}
-document.querySelectorAll('.slotpick button').forEach(b=>b.addEventListener('click',()=>{userPicked=true;setCat(b.dataset.c)}));
-$('#desc').addEventListener('input',e=>{if(!userPicked) setCat(guess(e.target.value))});
+document.querySelectorAll('.slotpick button').forEach(b=>b.addEventListener('click',()=>{userPicked=true;base=b.dataset.c;setCat(base)}));
+$('#desc').addEventListener('input',e=>{if(!userPicked) setCat(guess(e.target.value)||base)});
 
 let msgT;
 $('#addForm').addEventListener('submit',e=>{
   e.preventDefault();
   const amt=parseFloat($('#amount').value); if(!(amt>0)) return;
-  const date=$('#date').value||todayISO();
+  const date=$('#date').value||dateFor(view);
   state.tx.push({id:Date.now(),amt:Math.round(amt*100)/100,desc:$('#desc').value.trim(),cat,date});
   save(); view=date.slice(0,7);
-  $('#amount').value=''; $('#desc').value=''; userPicked=false; setCat('needs');
+  $('#amount').value=''; $('#desc').value=''; userPicked=false; setCat(base);
   render();
   $('#addMsg').textContent='Added'; clearTimeout(msgT); msgT=setTimeout(()=>$('#addMsg').textContent='',1600);
   $('#amount').focus();
 });
 $('#income').addEventListener('input',e=>{state.income=parseFloat(e.target.value)||0;save();render()});
 document.querySelectorAll('#ruleSeg button').forEach(b=>b.addEventListener('click',()=>{state.rule=b.dataset.r;save();render()}));
-function shift(n){const [y,m]=view.split('-').map(Number);view=ym(new Date(y,m-1+n,1));render()}
+function shift(n){const [y,m]=view.split('-').map(Number);goTo(ym(new Date(y,m-1+n,1)))}
 $('#prevM').addEventListener('click',()=>shift(-1));
 $('#nextM').addEventListener('click',()=>shift(1));
-$('#monthBtn').addEventListener('click',()=>{if(monthsAway()){view=ym(now);render()}});
+$('#monthBtn').addEventListener('click',()=>{if(monthsAway()) goTo(today.slice(0,7))});
+// The installed app can sit in the background for days: catch up when the date has rolled over
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) return;
+  const t=todayISO(); if(t===today) return;
+  const oldM=today.slice(0,7), wasToday=$('#date').value===today;
+  today=t; document.body.dataset.day=String(new Date().getDay());
+  if(view===oldM&&t.slice(0,7)!==oldM) goTo(t.slice(0,7));
+  else{if(wasToday) $('#date').value=t; render()}
+});
 
 // toast: a message with an optional button
 let toastT;
@@ -464,7 +480,7 @@ $('#importBtn').addEventListener('click',()=>{
   catch(e){$('#io').value='That isn’t a Pocket Ledger backup. Paste the whole backup text and try again.'}
 });
 
-$('#date').value=todayISO();
+$('#date').value=today;
 render();
 })();
 </script>
