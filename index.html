@@ -52,16 +52,18 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
   display:flex;align-items:center;gap:10px;white-space:nowrap}
 .brand::before{content:"";width:16px;height:16px;border-radius:50%;background:var(--orange);flex:none}
 .inst{min-height:44px!important;padding:6px 12px!important;font-size:12px!important;white-space:nowrap}
-@media (max-width:420px){.brand{font-size:20px}.day h1{font-size:28px}}
+@media (max-width:420px){.brand{font-size:20px}.icon-btn{width:44px;height:44px}}
+@media (max-width:360px){.brand{font-size:17px;gap:8px}.brand::before{width:12px;height:12px}.inst{padding:6px 8px!important;font-size:11px!important}}
+.day h1 .mo,.day h1 .yr{white-space:nowrap}
 .cols{display:grid;gap:14px 20px;align-items:start}
 .col{display:flex;flex-direction:column;gap:14px;min-width:0}
 @media (min-width:720px){.cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* Month header: big uppercase display type, year in grey, square nav keys */
 .day{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:4px 0 12px}
-.daybtn{display:block;border:0;background:transparent;padding:0;margin:0;text-align:left;cursor:default}
+.daybtn{flex:1 1 auto;min-width:0;display:block;border:0;background:transparent;padding:0;margin:0;text-align:left;cursor:default}
 .daybtn.away{cursor:pointer}
-.day h1{white-space:nowrap;font-family:var(--display);font-size:34px;line-height:1;margin:0;font-weight:800;text-transform:uppercase;letter-spacing:-.01em}
+.day h1{font-family:var(--display);font-size:clamp(22px,8vw,34px);line-height:1;margin:0;font-weight:800;text-transform:uppercase;letter-spacing:-.01em}
 .day h1 .yr{color:var(--mx2)}
 .day h1 small{display:block;font-family:var(--mono);font-size:13px;font-weight:400;color:var(--mx2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
 .daybtn .back{display:inline-block;margin-left:8px;padding:2px 8px;border:2px solid var(--mx);background:var(--orange);color:var(--mx);font-weight:500}
