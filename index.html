@@ -175,6 +175,10 @@ button.row:active .ds{color:var(--mxdim)}
 .addf .seg button{font-family:var(--font);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .legend{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mx2)}
 .backup-btns{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px}
+.bk2{display:grid;grid-template-columns:1fr 1fr}
+.bkx{margin-top:14px;border-top:1px solid var(--mxdim);padding-top:10px}
+.bkx summary{cursor:pointer;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--mx2);min-height:32px;display:flex;align-items:center}
+.warn{margin:0 0 12px;padding:8px 10px;border:2px solid var(--mx);background:var(--orange);font-weight:600;font-size:14px}
 textarea#io{display:block;width:100%;min-height:80px;resize:vertical;border:2px solid var(--mx);background:var(--mxbg);padding:8px 10px;font-size:12px;font-family:var(--mono);color:var(--mx)}
 .rules{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none;font-size:14px;color:var(--mx2)}
 .rules li{display:flex;gap:10px;align-items:baseline}
@@ -359,12 +363,20 @@ dialog .slotpick{margin-bottom:14px}
             <li><span class="sh c-wants"></span><span><b>Wants:</b> eating out, shows, gear, subscriptions, travel, anything optional.</span></li>
             <li><span class="sh c-save"></span><span><b>Savings &amp; debt:</b> emergency fund, retirement, investing, paying debt down faster.</span></li>
           </ul>
-          <div class="backup-btns">
-            <button class="ghost" id="exportBtn" type="button">Copy backup</button>
-            <button class="ghost" id="importBtn" type="button">Restore pasted backup</button>
+          <div class="backup-btns bk2">
+            <button class="primary" id="shareBtn" type="button">Share backup</button>
+            <button class="ghost" id="openBtn" type="button">Open backup file</button>
           </div>
-          <textarea id="io" placeholder="Copy backup puts your data here. To restore, paste a backup here and tap Restore."></textarea>
-          <p class="hint" style="margin-top:8px">Your entries are saved on this device only. Copy a backup before switching phones or browsers.</p>
+          <input type="file" id="bkFile" accept=".txt,.json,text/plain,application/json" hidden>
+          <p class="hint" id="bkMsg"></p>
+          <p class="hint" style="margin-top:8px">Your entries are saved on this device only. To move them, tap Share backup and send the file to yourself (email, Drive, Messages), then open it on the other device with Open backup file.</p>
+          <details class="bkx"><summary>Copy as text instead</summary>
+            <div class="backup-btns">
+              <button class="ghost" id="exportBtn" type="button">Copy backup</button>
+              <button class="ghost" id="importBtn" type="button">Restore pasted backup</button>
+            </div>
+            <textarea id="io" placeholder="Copy backup puts your data here. To restore, paste a backup here and tap Restore."></textarea>
+          </details>
           <p class="hint" id="installHint" style="margin-top:8px" hidden></p>
         </div>
       </section>
@@ -407,6 +419,23 @@ dialog .slotpick{margin-bottom:14px}
         <button type="button" class="danger" id="eDel">Delete</button>
         <button type="button" class="ghost" id="eCancel">Cancel</button>
         <button type="submit" class="primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Restore a backup: shows what's in it, warns when it's older than this device's data -->
+<dialog id="bdlg" aria-labelledby="bdTitle">
+  <form method="dialog" novalidate>
+    <h3 id="bdTitle">Restore this backup?</h3>
+    <div class="body">
+      <p class="dline" id="bdFrom"></p>
+      <p class="dline" id="bdHere"></p>
+      <p class="warn" id="bdWarn" hidden>This backup is older than what’s on this device. Restoring it will lose the newer changes here.</p>
+      <p class="hint" style="margin-bottom:14px">Restoring replaces everything on this device with the backup. You can undo it right after.</p>
+      <div class="actions">
+        <button type="button" class="ghost" id="bdCancel">Cancel</button>
+        <button type="button" class="primary" id="bdGo">Replace with backup</button>
       </div>
     </div>
   </form>
@@ -479,7 +508,8 @@ const dayName=s=>new Date(s+'T12:00').toLocaleDateString(undefined,{weekday:'sho
 function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function todayISO(){const d=new Date();return ym(d)+'-'+String(d.getDate()).padStart(2,'0')}
 function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+// `saved` is when this device last changed anything, so a restore can warn about replacing newer data with an older backup
+function save(){state.saved=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){};if(typeof bkMsg==='function') bkMsg()}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function pct(){return state.rule.split('/').map(Number)}
 let lastId=0;
@@ -1023,12 +1053,58 @@ $('#exportBtn').addEventListener('click',()=>{
   try{navigator.clipboard.writeText(json).then(done).catch(()=>$('#io').select())}catch(e){$('#io').select()}
 });
 $('#importBtn').addEventListener('click',()=>{
-  try{const s=JSON.parse($('#io').value); if(!s||!Array.isArray(s.tx)) throw 0; state=norm(s); pickSig=''; save(); render(); $('#io').value='Restored.'}
-  catch(e){$('#io').value='That isn’t a Pocket Ledger backup. Paste the whole backup text and try again.'}
+  if(!askRestore($('#io').value)) $('#io').value='That isn’t a Pocket Ledger backup. Paste the whole backup text and try again.';
+});
+
+/* Share backup: the phone's share menu with the backup attached as a file (email it, put it in Drive, message it);
+   where sharing files isn't supported (most desktop browsers) it downloads the file instead.
+   It's a .txt because Android's share menu won't take .json files; Open backup file reads either. */
+const when=t=>t?new Date(t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'unknown time';
+function count(s){const n=s.tx.length+s.reps.length+s.extra.length+s.hist.length+s.wd.length;return n+(n===1?' entry':' entries')}
+function bkMsg(){$('#bkMsg').textContent=state.saved?`Last change on this device: ${when(state.saved)}`:''}
+$('#shareBtn').addEventListener('click',async()=>{
+  const name=`pocket-ledger-backup-${todayISO()}.txt`, json=JSON.stringify({...state,app:'pocket-ledger',exported:Date.now()});
+  const file=new File([json],name,{type:'text/plain'});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Pocket Ledger backup',text:`Pocket Ledger backup, ${when(Date.now())}. Open it in Pocket Ledger with Open backup file.`});
+      return;
+    }
+  }catch(e){if(e&&e.name==='AbortError') return}
+  const a=document.createElement('a'); a.href=URL.createObjectURL(file); a.download=name; document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Backup saved to Downloads','OK');
+});
+$('#openBtn').addEventListener('click',()=>$('#bkFile').click());
+$('#bkFile').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
+  let text=''; try{text=await f.text()}catch(err){}
+  if(!askRestore(text)) toast('That file isn’t a Pocket Ledger backup.','OK');
+});
+// Restore pop-up: returns false when the text isn't a backup
+let pending=null;
+function askRestore(text){
+  let s; try{s=JSON.parse(text)}catch(e){return false}
+  if(!s||!Array.isArray(s.tx)) return false;
+  pending=norm(s);
+  const at=s.exported||s.saved;
+  $('#bdFrom').textContent=`Backup: ${count(pending)}, made ${when(at)}`;
+  $('#bdHere').textContent=`This device: ${count(state)}, last changed ${when(state.saved)}`;
+  $('#bdWarn').hidden=!(state.saved&&pending.saved&&pending.saved<state.saved);
+  $('#bdlg').showModal(); return true;
+}
+$('#bdCancel').addEventListener('click',()=>{pending=null;$('#bdlg').close()});
+$('#bdGo').addEventListener('click',()=>{
+  const prev=state, next=pending; pending=null; $('#bdlg').close(); if(!next) return;
+  delete next.app; delete next.exported;
+  // keep the backup's own last-change time, so restoring doesn't make it look newer than it is
+  state=next; pickSig=''; try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){} render(); bkMsg();
+  $('#io').value='';
+  toast('Backup restored','Undo',()=>{state=prev;pickSig='';try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){};render();bkMsg()},10000);
 });
 
 DATES.forEach(id=>$(id).value=today);
-render();
+render(); bkMsg();
 })();
 </script>
 </body>

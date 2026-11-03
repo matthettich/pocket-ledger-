@@ -13,7 +13,7 @@ A monthly budget that follows the 50/30/20 rule, in Thunder Plus’s IDM skin (w
 - Each month has delete and undo. Swipe left or right (as in Daily meds) or use the arrows to change month; when you flip to another month, the date fields follow, so you can plan ahead without being bounced back to this month.
 - Works offline and installs as an app (the **Install app** button at the top, or Share → Add to Home Screen on iPhone).
 
-Everything is stored on the device in `localStorage`. Use **Copy backup** / **Restore pasted backup** in Settings to move data between devices or browsers.
+Everything is stored on the device in `localStorage`. To move data between devices, tap **Share backup** in Settings: on a phone it opens the share menu with the backup attached as a file (email it to yourself, save it to Drive); elsewhere it downloads the file. On the other device, **Open backup file** restores it, showing both sides' last-change times and warning if the backup is older, with undo. Copy-and-paste text backup is still under **Copy as text instead**.
 
 ## Files
 
