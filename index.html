@@ -135,12 +135,15 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .big{font-family:var(--display);font-size:34px;font-weight:800;line-height:1;letter-spacing:-.01em}
 .big small{font-family:var(--font);font-size:12px;font-weight:600;color:var(--mx2);margin-left:8px;text-transform:uppercase;letter-spacing:.08em}
 .env .rest{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
-.track{grid-column:1/-1;height:14px;border:2px solid var(--mx);background:var(--mxbg)}
+.track{grid-column:1;align-self:center;height:14px;border:2px solid var(--mx);background:var(--mxbg)}
 .track i{display:block;height:100%;background:var(--mx);width:0;transition:width .25s}
 .c-save .track i{background:var(--savek)}
 .env .hint{grid-column:1/-1}
 .env.over .rest{color:var(--mx);background:var(--orange);padding:0 6px;border:2px solid var(--mx)}
 .env.over .track i{background:var(--orange)}
+.pc{font-size:15px;font-weight:500;text-align:right;min-width:4.5ch;align-self:center;justify-self:end}
+.env.over .pc{background:var(--orange);border:2px solid var(--mx);padding:0 6px}
+.env.met .pc{background:var(--savek);color:var(--mxon);border:2px solid var(--mx);padding:0 6px}
 .env.met .rest{font-weight:500}
 
 /* Rows */
@@ -602,7 +605,7 @@ function render(){
       <div class="bd">
         <div class="big num">${fmt0(s)}<small>${isSave?'put away':'spent'}</small></div>
         <div class="rest num">${rest}</div>
-        <div class="track"><i style="width:${w}%"></i></div>${hint}
+        <div class="track"><i style="width:${w}%"></i></div><div class="pc num">${budget>0?Math.round(s/budget*100)+'%':'—'}</div>${hint}
       </div></section>`;
   }).join('');
 

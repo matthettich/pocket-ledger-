@@ -1,5 +1,5 @@
 // Bump this version whenever you change index.html so phones pick up the update.
-const CACHE = "pocket-ledger-v9";
+const CACHE = "pocket-ledger-v10";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png",
   "fonts/Inter-Regular.woff", "fonts/Inter-SemiBold.woff", "fonts/InterDisplay-Bold.woff", "fonts/JetBrainsMono-400.woff2"];
 
