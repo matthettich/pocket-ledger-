@@ -22,7 +22,7 @@ Everything is stored on the device in `localStorage`. Use **Copy backup** / **Re
 | `index.html` | The whole app: markup, styles and script |
 | `manifest.webmanifest` | App name, icons and colors for installing |
 | `sw.js` | Service worker: offline cache and update check. Bump `CACHE` whenever `index.html` changes |
-| `icon.svg`, `icon-*.png` | App icon: an abstract dollar sign (a pink coin split and slipped along a bar) with fading teal and lavender shadows |
+| `icon.svg`, `icon-*.png` | App icon in the IDM skin: an ink-framed panel on grey paper, its title strip carrying the orange dot and the needs / wants / savings marks, with the split-coin dollar sign in ink |
 
 ## Hosting
 
