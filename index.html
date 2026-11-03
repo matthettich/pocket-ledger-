@@ -226,6 +226,38 @@ dialog .slotpick{margin-bottom:12px}
 .actions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
 .danger{border:0;background:transparent;color:var(--danger);padding:8px 0;min-height:40px;margin-right:auto}
 
+/* Grand total + the three logs: needs (grey, own column), purchases (wants), savings (green) */
+.c-total{--dh:-22}
+.tot .bd{display:grid;gap:10px}
+.tot .gt{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tot .gt small{font-size:13px;color:var(--muted)}
+.tot .parts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--rule)}
+.tot .parts div{padding:6px 8px;display:grid;gap:2px;min-width:0}
+.tot .parts div+div{border-left:1px solid var(--rule)}
+.tot .parts span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.tot .parts b{font-weight:500;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tot .parts .p-needs{background:#EDEDED} .tot .parts .p-save{background:hsl(140 45% 87%)}
+.logsw{container-type:inline-size}
+.logs{display:grid;gap:12px;align-items:start}
+@container (min-width:520px){.logs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.log-save{grid-column:1/-1}}
+.log > .lid{background:var(--white)}
+.log-needs{background:#EDEDED}
+.log-needs .sh{background:#C4C4C4}
+.log-wants{background:var(--white)} .log-wants > .lid{background:hsl(var(--H) var(--s) 86%)}
+.log-save{background:hsl(140 45% 87%)}
+.log-save .sh{background:hsl(140 50% 62%)}
+.log-save > .lid{color:#14532D}
+.lid .st b{font-weight:500;font-size:17px}
+.dh{display:flex;justify-content:space-between;gap:8px;padding:8px 10px 4px;font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--rule)}
+.lid + .dh{border-top:0}
+.dh + .prow{border-top:0}
+.log .row .side{font-weight:500}
+.row.auto{cursor:default}
+.todate{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px;border-top:3px solid var(--rule);background:var(--white)}
+.todate b{font-size:22px;font-weight:500}
+.todate small{display:block;font-size:13px;color:var(--muted)}
+.addpast{display:block;width:calc(100% - 20px);margin:8px 10px 10px}
+
 @media (prefers-reduced-motion:reduce){.bar i,.track i{transition:none}}
 </style>
 </head>
@@ -306,8 +338,9 @@ dialog .slotpick{margin-bottom:12px}
     </div>
 
     <div class="col">
-      <div class="sect"><span id="listHead">Purchases</span></div>
-      <div class="list" id="list"></div>
+      <div class="sect"><span id="listHead">This month</span></div>
+      <section class="box inv c-total" id="totBox"></section>
+      <div class="logsw"><div class="logs" id="logs"></div></div>
 
       <div class="sect">Lists</div>
       <section class="box reg c-saved">
@@ -362,6 +395,27 @@ dialog .slotpick{margin-bottom:12px}
   </form>
 </dialog>
 
+<!-- Edit a one-off cost, or a past-savings entry -->
+<dialog id="edlg" aria-labelledby="edTitle">
+  <form method="dialog" id="eForm" novalidate autocomplete="off">
+    <h3 id="edTitle">Edit cost</h3>
+    <div class="body">
+      <label class="f">Amount<span class="money"><span>$</span><input name="amt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00"></span></label>
+      <label class="f">What<input name="desc" placeholder="What was it?"></label>
+      <div id="eCatWrap"><p class="flabel">Category</p>
+      <div class="slotpick" id="eCat" role="group" aria-label="Category"></div></div>
+      <label class="f"><span id="eDateLbl">Date</span><input name="date" type="date"></label>
+      <p class="hint" id="eHint" hidden>Money you saved before Pocket Ledger, or outside this budget. It counts toward Saved to date, not this month’s envelopes.</p>
+      <p class="err" id="eErr" role="alert"></p>
+      <div class="actions">
+        <button type="button" class="danger" id="eDel">Delete</button>
+        <button type="button" class="ghost" id="eCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <!-- A repeating cost: skip one, stop it, bring skipped ones back, edit or delete it -->
 <dialog id="rdlg" aria-labelledby="rdTitle">
   <form method="dialog" id="rForm" novalidate autocomplete="off">
@@ -406,11 +460,13 @@ const RPT='<svg class="rp" viewBox="0 0 24 24" fill="none" stroke="currentColor"
    reps  repeating costs {id, amt, desc, cat, start, every: day|week|month, skip: [dates], end?: last date}
    items the saved-costs list that Add a purchase picks from {id, name, amt (0 = varies), cat}
    extra one-off income {id, amt, desc, date}
+   hist  past savings from before Pocket Ledger or outside the budget {id, amt, desc, date ('' = no date)};
+         they only count toward Saved to date, never a month's envelopes
    Older saves only have income, rule and tx; the rest start empty. */
 function norm(s){
   s=s&&typeof s==='object'?s:{};
   const arr=a=>Array.isArray(a)?a:[];
-  return {...s,income:+s.income||0,rule:s.rule||'50/30/20',tx:arr(s.tx),reps:arr(s.reps),items:arr(s.items),extra:arr(s.extra)};
+  return {...s,income:+s.income||0,rule:s.rule||'50/30/20',tx:arr(s.tx),reps:arr(s.reps),items:arr(s.items),extra:arr(s.extra),hist:arr(s.hist)};
 }
 let state=norm(load());
 let today=todayISO();
@@ -476,6 +532,38 @@ function costsIn(v){
   return L.sort((a,b)=>b.date.localeCompare(a.date)||b.seq-a.seq);
 }
 
+/* ---------- month-end rollover ----------
+   When a month is over, whatever of that month's pay (plus extra income) wasn't spent or saved goes into savings,
+   as an automatic row on the month's last day. It starts from the first month with anything logged, so months
+   before you started using the app don't count your whole pay as saved. */
+function nextM(v){const [y,m]=v.split('-').map(Number);return ym(new Date(y,m,1))}
+function firstMonth(){
+  let f='';
+  const see=s=>{if(s&&(!f||s<f)) f=s.slice(0,7)};
+  state.tx.forEach(t=>see(t.date)); state.reps.forEach(r=>see(r.start)); state.extra.forEach(x=>see(x.date));
+  return f;
+}
+function incomeIn(v){return (state.income||0)+state.extra.filter(x=>x.date.startsWith(v)).reduce((a,x)=>a+x.amt,0)}
+function allIn(v,fm){
+  const L=costsIn(v);
+  if(fm===undefined) fm=firstMonth();
+  if(fm&&v>=fm&&v<today.slice(0,7)){
+    const left=r2(incomeIn(v)-L.reduce((a,t)=>a+t.amt,0));
+    if(left>0){
+      const mn=new Date(v+'-01T12:00').toLocaleDateString(undefined,{month:'long'});
+      L.unshift({roll:true,seq:0,amt:left,cat:'save',desc:'Unspent from '+mn,date:v+'-'+String(daysIn(v)).padStart(2,'0')});
+    }
+  }
+  return L;
+}
+// Everything saved up to today: past savings, savings entries, and every finished month's rollover
+function savedToDate(){
+  let s=state.hist.reduce((a,h)=>a+h.amt,0);
+  const fm=firstMonth(), now=today.slice(0,7);
+  if(fm) for(let v=fm;v<=now;v=nextM(v)) for(const t of allIn(v,fm)) if(t.cat==='save'&&t.date<=today) s+=t.amt;
+  return r2(s);
+}
+
 function render(){
   // month header
   const away=monthsAway();
@@ -486,15 +574,18 @@ function render(){
   if(document.activeElement!==$('#income')) $('#income').value=state.income||'';
   document.querySelectorAll('#ruleSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===state.rule)));
 
-  const tx=costsIn(view);
+  const tx=allIn(view);
   const spent={needs:0,wants:0,save:0}; tx.forEach(t=>spent[t.cat]+=t.amt);
   const total=spent.needs+spent.wants+spent.save;
   const xs=state.extra.filter(x=>x.date.startsWith(view)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
   const xsum=xs.reduce((a,x)=>a+x.amt,0);
-  const inc=(state.income||0)+xsum, left=inc-total;
+  const inc=(state.income||0)+xsum, left=r2(inc-total);
+  const rolled=tx.find(t=>t.roll);
 
   $('#leftNum').textContent=fmt(left);
   $('#leftBox').classList.toggle('neg',left<0);
+  $('#leftBox small').textContent=rolled?`${fmt(rolled.amt)} rolled into savings`
+    :away===0&&left>0?'Left · rolls into savings at month end':'Not yet spent or saved';
 
   const pr=$('#progress');
   if(inc>0){
@@ -535,39 +626,63 @@ function render(){
   $('#xsrc').innerHTML=srcs.map(s=>`<option value="${esc(s)}"></option>`).join('');
 
   renderSaved();
-  renderList(tx,d);
+  renderLogs(tx,d,spent,inc);
 }
 
-// purchases grouped by day
-function renderList(tx,d){
+// Grand total, then three logs grouped by day: needs (grey, own column), purchases (wants), savings (green)
+const LOGS={needs:{title:'Needs',cls:'log-needs',none:'No needs logged'},
+  wants:{title:'Purchases',cls:'log-wants c-wants',none:'No purchases logged'},
+  save:{title:'Savings',cls:'log-save',none:'Nothing saved'}};
+function txRow(t){
+  const nm=esc(t.desc)||'Untitled';
+  if(t.roll) return `<div class="prow"><div class="row auto"><span class="sh c-save"></span>
+      <span class="tx"><span class="nm">${nm}</span><span class="ds">Rolled over automatically</span></span>
+      <span class="side num">${fmt(t.amt)}</span></div></div>`;
+  if(!t.rep) return `<div class="prow">
+      <button class="row" type="button" data-tx="${t.id}" aria-label="${nm}, ${fmt(t.amt)}. Tap to edit"><span class="sh c-${t.cat}"></span>
+        <span class="tx"><span class="nm">${nm}</span></span>
+        <span class="side num">${fmt(t.amt)}</span></button>
+      <button class="parch" type="button" data-del="${t.id}" aria-label="Delete ${nm}">×</button>
+    </div>`;
+  const E=EVERY[t.rep.every];
+  return `<div class="prow">
+      <button class="row" type="button" data-rep="${t.rep.id}" data-date="${t.date}" aria-label="${nm}, repeats ${E.adv}. Tap to edit, skip or stop it"><span class="sh c-${t.cat}"></span>
+        <span class="tx"><span class="nm">${nm}</span><span class="ds">${RPT}${E.name}</span></span>
+        <span class="side num">${fmt(t.amt)}</span></button>
+      <button class="parch" type="button" data-skip="${t.rep.id}" data-date="${t.date}" aria-label="Skip ${nm} on ${short(t.date)} only">×</button>
+    </div>`;
+}
+function renderLogs(tx,d,spent,inc){
   const mname=d.toLocaleDateString(undefined,{month:'long'});
-  $('#listHead').textContent=`Purchases · ${tx.length}`;
-  if(!tx.length){
-    $('#list').innerHTML=`<section class="box reg c-list" style="--l:92%"><div class="lid"><h2>${mname}</h2></div><div class="empty-row">Nothing logged for ${mname} yet. Use Add a purchase to log your first one.</div></section>`;
-    return;
-  }
-  const byDay={}; tx.forEach(t=>(byDay[t.date]=byDay[t.date]||[]).push(t));
-  const row=t=>{
-    const nm=esc(t.desc)||'Untitled';
-    if(!t.rep) return `<div class="prow">
-        <div class="row"><span class="sh c-${t.cat}"></span>
-          <span class="tx"><span class="nm">${nm}</span><span class="ds">${CATS[t.cat].name}</span></span>
-          <span class="side num">${fmt(t.amt)}</span></div>
-        <button class="parch" type="button" data-id="${t.id}" aria-label="Delete ${nm}">×</button>
-      </div>`;
-    const E=EVERY[t.rep.every];
-    return `<div class="prow">
-        <button class="row" type="button" data-rep="${t.rep.id}" data-date="${t.date}" aria-label="${nm}, repeats ${E.adv}. Tap to skip, stop or change it"><span class="sh c-${t.cat}"></span>
-          <span class="tx"><span class="nm">${nm}</span><span class="ds">${CATS[t.cat].name} ·${RPT}${E.name}</span></span>
-          <span class="side num">${fmt(t.amt)}</span></button>
-        <button class="parch" type="button" data-skip="${t.rep.id}" data-date="${t.date}" aria-label="Skip ${nm} on ${short(t.date)} only">×</button>
-      </div>`;
-  };
-  $('#list').innerHTML=Object.keys(byDay).map((day,i)=>{
-    const sum=byDay[day].reduce((a,t)=>a+t.amt,0);
-    return `<section class="box ${i%2?'inv':'reg'} c-list" style="--l:${i%2?88:92}%">
-      <div class="lid"><h2>${dayName(day)}</h2><span class="st num">${fmt(sum)}</span></div>`+byDay[day].map(row).join('')+'</section>';
+  const total=spent.needs+spent.wants+spent.save;
+  $('#listHead').textContent=mname;
+  $('#totBox').className='box inv c-total tot';
+  $('#totBox').innerHTML=`<div class="lid"><h2>Grand total</h2><span class="st num">${tx.length} ${tx.length===1?'entry':'entries'}</span></div>
+    <div class="bd"><div class="gt"><span class="big num">${fmt(total)}</span><small class="num">${inc>0?`of ${fmt(inc)} income`:''}</small></div>
+    <div class="parts num">${ORDER.map(k=>`<div class="p-${k}"><span><span class="sh c-${k}"></span>${LOGS[k].title}</span><b>${fmt(spent[k])}</b></div>`).join('')}</div></div>`;
+  $('#logs').innerHTML=ORDER.map(k=>{
+    const L=tx.filter(t=>t.cat===k), byDay={};
+    L.forEach(t=>(byDay[t.date]=byDay[t.date]||[]).push(t));
+    let body=L.length?Object.keys(byDay).map(day=>{
+      const s=byDay[day].reduce((a,t)=>a+t.amt,0);
+      return `<div class="dh"><span>${dayName(day)}</span><span class="num">${fmt(s)}</span></div>`+byDay[day].map(txRow).join('');
+    }).join(''):`<div class="empty-row">${LOGS[k].none} for ${mname} yet.</div>`;
+    if(k==='save') body+=pastSavings();
+    return `<section class="box log ${LOGS[k].cls}">
+      <div class="lid"><span class="sh c-${k}"></span><h2>${LOGS[k].title}</h2><span class="st num"><b>${fmt(spent[k])}</b></span></div>${body}</section>`;
   }).join('');
+}
+// Past savings + the running total, at the bottom of the Savings log
+function pastSavings(){
+  const H=[...state.hist].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id-a.id);
+  const hs=H.reduce((a,h)=>a+h.amt,0);
+  return `<div class="todate"><span>Saved to date<small>Everything up to today, past savings and month-end rollovers included</small></span><b class="num">${fmt(savedToDate())}</b></div>`
+    +`<div class="dh"><span>Past savings</span><span class="num">${H.length?fmt(hs):''}</span></div>`
+    +H.map(h=>{const nm=esc(h.desc)||'Past savings';return `<div class="prow">
+      <button class="row" type="button" data-hist="${h.id}" aria-label="${nm}, ${fmt(h.amt)}. Tap to edit"><span class="sh c-save"></span>
+        <span class="tx"><span class="nm">${nm}</span><span class="ds">${h.date?dayName(h.date):'Before Pocket Ledger'}</span></span>
+        <span class="side num">${fmt(h.amt)}</span></button></div>`}).join('')
+    +`<button class="ghost addpast" type="button" id="addHist">+ Add past savings</button>`;
 }
 
 /* ---------- saved costs: the list Add a purchase picks from, like the Daily meds pickers ---------- */
@@ -699,15 +814,67 @@ function skipOne(r,date){
   (r.skip||(r.skip=[])).push(date); save(); render();
   toast(`Skipped ${r.desc||'repeat'} on ${short(date)}`,'Undo',()=>{r.skip=r.skip.filter(s=>s!==date);save();render()});
 }
-$('#list').addEventListener('click',e=>{
+function delTx(id){
+  const i=state.tx.findIndex(t=>t.id===id); if(i<0) return;
+  const [t]=state.tx.splice(i,1); save(); render();
+  toast(`Deleted ${fmt(t.amt)}`,'Undo',()=>{state.tx.push(t);save();render()});
+}
+$('#logs').addEventListener('click',e=>{
+  if(e.target.closest('#addHist')){openEdit('hist',null);return}
   const sk=e.target.closest('[data-skip]');
   if(sk){const r=repOf(Number(sk.dataset.skip)); if(r) skipOne(r,sk.dataset.date); return}
   const rb=e.target.closest('[data-rep]');
   if(rb){openRep(Number(rb.dataset.rep),rb.dataset.date); return}
-  const b=e.target.closest('[data-id]'); if(!b) return;
-  const i=state.tx.findIndex(t=>t.id===Number(b.dataset.id)); if(i<0) return;
-  const [t]=state.tx.splice(i,1); save(); render();
-  toast(`Deleted ${fmt(t.amt)}`,'Undo',()=>{state.tx.push(t);save();render()});
+  const del=e.target.closest('[data-del]');
+  if(del){delTx(Number(del.dataset.del)); return}
+  const tb=e.target.closest('[data-tx]');
+  if(tb){const t=state.tx.find(x=>x.id===Number(tb.dataset.tx)); if(t) openEdit('tx',t); return}
+  const hb=e.target.closest('[data-hist]');
+  if(hb){const h=state.hist.find(x=>x.id===Number(hb.dataset.hist)); if(h) openEdit('hist',h)}
+});
+
+/* ---------- edit pop-up: tap a one-off cost (or a past-savings entry) to change it ---------- */
+let ectx=null;
+const edlg=$('#edlg'), eForm=$('#eForm');
+{const g=$('#eCat');g.innerHTML=CATBTNS;g.addEventListener('click',e=>{const b=e.target.closest('button');if(b) pickIn('#eCat',b.dataset.c)})}
+function openEdit(kind,it){
+  ectx={kind,it};
+  const h=kind==='hist';
+  $('#edTitle').textContent=h?(it?'Edit past savings':'Add past savings'):'Edit cost';
+  eForm.amt.value=it?it.amt:''; eForm.desc.value=it?it.desc:'';
+  eForm.desc.placeholder=h?'e.g. Emergency fund, Roth IRA':'What was it?';
+  eForm.date.value=it?it.date:(h?'':dateFor(view));
+  $('#eDateLbl').textContent=h?'When (optional)':'Date';
+  $('#eCatWrap').hidden=h; $('#eHint').hidden=!h;
+  if(!h) pickIn('#eCat',it.cat);
+  $('#eDel').hidden=!it; $('#eErr').textContent='';
+  edlg.showModal();
+  eForm.amt.focus(); eForm.amt.select();
+}
+$('#eCancel').addEventListener('click',()=>edlg.close());
+$('#eDel').addEventListener('click',()=>{
+  const {kind,it}=ectx; edlg.close();
+  if(kind==='tx'){delTx(it.id);return}
+  const i=state.hist.indexOf(it); if(i<0) return;
+  state.hist.splice(i,1); save(); render();
+  toast(`Deleted ${fmt(it.amt)} past savings`,'Undo',()=>{state.hist.push(it);save();render()});
+});
+eForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const amt=parseFloat(eForm.amt.value);
+  if(!(amt>0)){$('#eErr').textContent='Enter an amount above $0.';eForm.amt.focus();return}
+  const {kind,it}=ectx, desc=eForm.desc.value.trim(), date=eForm.date.value;
+  if(kind==='hist'){
+    if(it) Object.assign(it,{amt:r2(amt),desc,date});
+    else state.hist.push({id:nid(),amt:r2(amt),desc,date});
+    save(); edlg.close(); render(); return;
+  }
+  const before={...it};
+  Object.assign(it,{amt:r2(amt),desc,cat:$('#eCat').dataset.v||it.cat,date:date||it.date});
+  save(); edlg.close(); render();
+  const moved=it.date.slice(0,7)!==view;
+  toast(moved?`Moved to ${new Date(it.date+'T12:00').toLocaleDateString(undefined,{month:'long',year:'numeric'})}`:`Updated to ${fmt(it.amt)}`,
+    'Undo',()=>{Object.assign(it,before);save();render()});
 });
 $('#extraList').addEventListener('click',e=>{
   const b=e.target.closest('[data-xid]'); if(!b) return;
