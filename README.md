@@ -1,6 +1,6 @@
 # Pocket Ledger
 
-A monthly budget that follows the 50/30/20 rule, styled like Daily meds.
+A monthly budget that follows the 50/30/20 rule, in Thunder Plus’s IDM skin (warm grey paper, ink frames, Inter + JetBrains Mono, bundled in `fonts/`).
 
 - Enter your monthly take-home pay once; it splits into three envelopes: **Needs** (50%), **Wants** (30%) and **Savings & debt** (20%). Other splits (60/20/20, 70/20/10, 40/30/30) are in Settings.
 - Log a purchase with an amount and a word or two. The category picks itself from the description (rent, groceries → Need; 401k, savings → Save); anything else stays on the last category you tapped (Need to start).

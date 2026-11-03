@@ -1,6 +1,7 @@
 // Bump this version whenever you change index.html so phones pick up the update.
-const CACHE = "pocket-ledger-v7";
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png"];
+const CACHE = "pocket-ledger-v8";
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-512.png",
+  "fonts/Inter-Regular.woff", "fonts/Inter-SemiBold.woff", "fonts/InterDisplay-Bold.woff", "fonts/JetBrainsMono-400.woff2"];
 
 self.addEventListener("install", e => {
   // Cache files one by one so a single missing file can't stop the app installing.
@@ -27,7 +28,7 @@ self.addEventListener("fetch", e => {
     );
     return;
   }
-  // Jost font: cache first, it never changes.
+  // Old Google font (no longer used): cache first, it never changes.
   if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com")) {
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(res => {
