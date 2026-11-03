@@ -9,7 +9,7 @@ A monthly budget that follows the 50/30/20 rule, in Thunder Plus’s IDM skin (w
 - **Extra income**: log one-off money (a gig, a sale, a refund) by month. It's added to that month's pay before the envelopes are split.
 - **Three logs**, each grouped by day with its own total at the top: **Needs** (grey, in its own column), **Purchases** (wants) and **Savings** (green). A **Grand total** box above them adds all three. Tap any cost to edit its amount, name, category or date (with undo); × deletes it.
 - **Month-end rollover**: when a month is over, any pay or extra income that wasn't spent or saved goes into that month's savings automatically ("Unspent from October"). It starts from the first month you logged anything.
-- **Past savings**: add money saved before Pocket Ledger (or outside it) at the bottom of the Savings log. **Saved to date** adds past savings, every savings entry and every rollover up to today.
+- **Past savings** and **Deduct from savings**: at the bottom of the Savings log, add money saved before Pocket Ledger (or outside it), or take money out of savings. **Saved to date** adds past savings, every savings entry and every rollover up to today, minus anything taken out. Neither changes a month's envelopes.
 - Each month has delete and undo. Swipe left or right (as in Daily meds) or use the arrows to change month; when you flip to another month, the date fields follow, so you can plan ahead without being bounced back to this month.
 - Works offline and installs as an app (the **Install app** button at the top, or Share → Add to Home Screen on iPhone).
 

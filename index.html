@@ -245,7 +245,9 @@ dialog .slotpick{margin-bottom:14px}
 .todate > span{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
 .todate b{font-family:var(--display);font-size:30px;font-weight:800}
 .todate small{display:block;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--mx2)}
-.addpast{display:block;width:calc(100% - 24px);margin:10px 12px 12px}
+.savebtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px 12px}
+.savebtns button{margin:0;padding:8px 6px;font-size:13px}
+.sh.wdk{background:var(--mxpanel)}
 
 @media (prefers-reduced-motion:reduce){.bar i,.track i{transition:none}}
 </style>
@@ -451,11 +453,12 @@ const RPT='<svg class="rp" viewBox="0 0 24 24" fill="none" stroke="currentColor"
    extra one-off income {id, amt, desc, date}
    hist  past savings from before Pocket Ledger or outside the budget {id, amt, desc, date ('' = no date)};
          they only count toward Saved to date, never a month's envelopes
+   wd    money taken out of savings {id, amt, desc, date}; lowers Saved to date, never a month's envelopes
    Older saves only have income, rule and tx; the rest start empty. */
 function norm(s){
   s=s&&typeof s==='object'?s:{};
   const arr=a=>Array.isArray(a)?a:[];
-  return {...s,income:+s.income||0,rule:s.rule||'50/30/20',tx:arr(s.tx),reps:arr(s.reps),items:arr(s.items),extra:arr(s.extra),hist:arr(s.hist)};
+  return {...s,income:+s.income||0,rule:s.rule||'50/30/20',tx:arr(s.tx),reps:arr(s.reps),items:arr(s.items),extra:arr(s.extra),hist:arr(s.hist),wd:arr(s.wd)};
 }
 let state=norm(load());
 let today=todayISO();
@@ -547,7 +550,7 @@ function allIn(v,fm){
 }
 // Everything saved up to today: past savings, savings entries, and every finished month's rollover
 function savedToDate(){
-  let s=state.hist.reduce((a,h)=>a+h.amt,0);
+  let s=state.hist.reduce((a,h)=>a+h.amt,0)-state.wd.filter(w=>w.date<=today).reduce((a,w)=>a+w.amt,0);
   const fm=firstMonth(), now=today.slice(0,7);
   if(fm) for(let v=fm;v<=now;v=nextM(v)) for(const t of allIn(v,fm)) if(t.cat==='save'&&t.date<=today) s+=t.amt;
   return r2(s);
@@ -665,13 +668,20 @@ function renderLogs(tx,d,spent,inc){
 function pastSavings(){
   const H=[...state.hist].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id-a.id);
   const hs=H.reduce((a,h)=>a+h.amt,0);
-  return `<div class="todate"><span>Saved to date<small>Everything up to today, past savings and month-end rollovers included</small></span><b class="num">${fmt(savedToDate())}</b></div>`
+  const W=state.wd.filter(w=>w.date.startsWith(view)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const ws=W.reduce((a,w)=>a+w.amt,0);
+  return (W.length?`<div class="dh"><span>Taken out</span><span class="num">−${fmt(ws)}</span></div>`
+    +W.map(w=>{const nm=esc(w.desc)||'Taken out';return `<div class="prow">
+      <button class="row" type="button" data-wd="${w.id}" aria-label="${nm}, ${fmt(w.amt)} taken out. Tap to edit"><span class="sh c-save wdk"></span>
+        <span class="tx"><span class="nm">${nm}</span><span class="ds">${dayName(w.date)}</span></span>
+        <span class="side num">−${fmt(w.amt)}</span></button></div>`}).join(''):'')
+    +`<div class="todate"><span>Saved to date<small>Up to today: past savings and rollovers in, anything taken out subtracted</small></span><b class="num">${fmt(savedToDate())}</b></div>`
     +`<div class="dh"><span>Past savings</span><span class="num">${H.length?fmt(hs):''}</span></div>`
     +H.map(h=>{const nm=esc(h.desc)||'Past savings';return `<div class="prow">
       <button class="row" type="button" data-hist="${h.id}" aria-label="${nm}, ${fmt(h.amt)}. Tap to edit"><span class="sh c-save"></span>
         <span class="tx"><span class="nm">${nm}</span><span class="ds">${h.date?dayName(h.date):'Before Pocket Ledger'}</span></span>
         <span class="side num">${fmt(h.amt)}</span></button></div>`}).join('')
-    +`<button class="ghost addpast" type="button" id="addHist">+ Add past savings</button>`;
+    +`<div class="savebtns"><button class="ghost" type="button" id="addHist">+ Add past savings</button><button class="danger" type="button" id="addWd">− Deduct from savings</button></div>`;
 }
 
 /* ---------- saved costs: the list Add a purchase picks from, like the Daily meds pickers ---------- */
@@ -810,6 +820,9 @@ function delTx(id){
 }
 $('#logs').addEventListener('click',e=>{
   if(e.target.closest('#addHist')){openEdit('hist',null);return}
+  if(e.target.closest('#addWd')){openEdit('wd',null);return}
+  const wb=e.target.closest('[data-wd]');
+  if(wb){const w=state.wd.find(x=>x.id===Number(wb.dataset.wd)); if(w) openEdit('wd',w); return}
   const sk=e.target.closest('[data-skip]');
   if(sk){const r=repOf(Number(sk.dataset.skip)); if(r) skipOne(r,sk.dataset.date); return}
   const rb=e.target.closest('[data-rep]');
@@ -828,14 +841,16 @@ const edlg=$('#edlg'), eForm=$('#eForm');
 {const g=$('#eCat');g.innerHTML=CATBTNS;g.addEventListener('click',e=>{const b=e.target.closest('button');if(b) pickIn('#eCat',b.dataset.c)})}
 function openEdit(kind,it){
   ectx={kind,it};
-  const h=kind==='hist';
-  $('#edTitle').textContent=h?(it?'Edit past savings':'Add past savings'):'Edit cost';
+  const h=kind==='hist', w=kind==='wd';
+  $('#edTitle').textContent=h?(it?'Edit past savings':'Add past savings'):w?(it?'Edit amount taken out':'Deduct from savings'):'Edit cost';
   eForm.amt.value=it?it.amt:''; eForm.desc.value=it?it.desc:'';
-  eForm.desc.placeholder=h?'e.g. Emergency fund, Roth IRA':'What was it?';
+  eForm.desc.placeholder=h?'e.g. Emergency fund, Roth IRA':w?'What for? e.g. Car repair':'What was it?';
   eForm.date.value=it?it.date:(h?'':dateFor(view));
   $('#eDateLbl').textContent=h?'When (optional)':'Date';
-  $('#eCatWrap').hidden=h; $('#eHint').hidden=!h;
-  if(!h) pickIn('#eCat',it.cat);
+  $('#eCatWrap').hidden=h||w; $('#eHint').hidden=!(h||w);
+  $('#eHint').textContent=h?'Money you saved before Pocket Ledger, or outside this budget. It counts toward Saved to date, not this month’s envelopes.'
+    :'Money taken out of your savings. It lowers Saved to date but doesn’t change this month’s envelopes. If you spent it on something, you don’t need to log that as a purchase too.';
+  if(!h&&!w) pickIn('#eCat',it.cat);
   $('#eDel').hidden=!it; $('#eErr').textContent='';
   edlg.showModal();
   eForm.amt.focus(); eForm.amt.select();
@@ -844,19 +859,22 @@ $('#eCancel').addEventListener('click',()=>edlg.close());
 $('#eDel').addEventListener('click',()=>{
   const {kind,it}=ectx; edlg.close();
   if(kind==='tx'){delTx(it.id);return}
-  const i=state.hist.indexOf(it); if(i<0) return;
-  state.hist.splice(i,1); save(); render();
-  toast(`Deleted ${fmt(it.amt)} past savings`,'Undo',()=>{state.hist.push(it);save();render()});
+  const L=state[kind], i=L.indexOf(it); if(i<0) return;
+  L.splice(i,1); save(); render();
+  toast(`Deleted ${fmt(it.amt)} ${kind==='wd'?'taken out':'past savings'}`,'Undo',()=>{L.push(it);save();render()});
 });
 eForm.addEventListener('submit',e=>{
   e.preventDefault();
   const amt=parseFloat(eForm.amt.value);
   if(!(amt>0)){$('#eErr').textContent='Enter an amount above $0.';eForm.amt.focus();return}
   const {kind,it}=ectx, desc=eForm.desc.value.trim(), date=eForm.date.value;
-  if(kind==='hist'){
-    if(it) Object.assign(it,{amt:r2(amt),desc,date});
-    else state.hist.push({id:nid(),amt:r2(amt),desc,date});
-    save(); edlg.close(); render(); return;
+  if(kind==='hist'||kind==='wd'){
+    const d=kind==='wd'?(date||dateFor(view)):date;
+    if(it) Object.assign(it,{amt:r2(amt),desc,date:d});
+    else state[kind].push({id:nid(),amt:r2(amt),desc,date:d});
+    save(); edlg.close(); render();
+    if(kind==='wd'&&!it) toast(`Took ${fmt(amt)} out of savings`,'Undo',()=>{state.wd.pop();save();render()});
+    return;
   }
   const before={...it};
   Object.assign(it,{amt:r2(amt),desc,cat:$('#eCat').dataset.v||it.cat,date:date||it.date});
